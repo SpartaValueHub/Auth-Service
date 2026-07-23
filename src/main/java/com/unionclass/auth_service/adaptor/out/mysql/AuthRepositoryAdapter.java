@@ -1,4 +1,39 @@
 package com.unionclass.auth_service.adaptor.out.mysql;
 
-public class AuthRepositoryAdapter {
+import com.unionclass.auth_service.adaptor.out.mysql.entity.AuthEntity;
+import com.unionclass.auth_service.adaptor.out.mysql.mapper.AuthEntityMapper;
+import com.unionclass.auth_service.adaptor.out.mysql.repository.AuthRepository;
+import com.unionclass.auth_service.application.port.out.AuthRepositoryPort;
+import com.unionclass.auth_service.domain.model.AuthDomain;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class AuthRepositoryAdapter implements AuthRepositoryPort {
+
+    private final AuthRepository authRepository;
+    private final AuthEntityMapper authEntityMapper;
+
+    @Override
+    public boolean existsByLogInId(String logInId) {
+        return authRepository.existsByLogInId(logInId);
+    }
+
+    @Override
+    public boolean existsByEmailAndNotDeleted(String email) {
+        return authRepository.existsByEmailAndDeleted(email, false);
+    }
+
+    @Override
+    public boolean existsByPhoneAndNotDeleted(String phone) {
+        return authRepository.existsByPhoneAndDeleted(phone, false);
+    }
+
+    @Override
+    public AuthDomain save(AuthDomain authDomain) {
+        AuthEntity entity = authEntityMapper.toEntity(authDomain);
+        AuthEntity saved = authRepository.save(entity);
+        return authEntityMapper.toDomain(saved);
+    }
 }
