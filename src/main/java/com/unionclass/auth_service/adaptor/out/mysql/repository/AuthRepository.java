@@ -13,6 +13,8 @@ public interface AuthRepository extends JpaRepository<AuthEntity, Long> {
 
     boolean existsByPhoneAndDeleted(String phone, boolean deleted);
 
+    Optional<AuthEntity> findByLogInIdAndDeleted(String logInId, boolean deleted);
+
     Optional<AuthEntity> findByLogInId(String logInId);
 
     Optional<AuthEntity> findByUserId(String userId);

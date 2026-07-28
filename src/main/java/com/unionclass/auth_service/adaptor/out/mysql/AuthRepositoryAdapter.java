@@ -8,6 +8,8 @@ import com.unionclass.auth_service.domain.model.AuthDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 @RequiredArgsConstructor
 public class AuthRepositoryAdapter implements AuthRepositoryPort {
@@ -28,6 +30,12 @@ public class AuthRepositoryAdapter implements AuthRepositoryPort {
     @Override
     public boolean existsByPhoneAndNotDeleted(String phone) {
         return authRepository.existsByPhoneAndDeleted(phone, false);
+    }
+
+    @Override
+    public Optional<AuthDomain> findByLogInIdAndNotDeleted(String logInId) {
+        return authRepository.findByLogInIdAndDeleted(logInId, false)
+                .map(authEntityMapper::toDomain);
     }
 
     @Override

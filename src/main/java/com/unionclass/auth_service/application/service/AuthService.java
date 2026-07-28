@@ -1,10 +1,14 @@
 package com.unionclass.auth_service.application.service;
 
+import com.unionclass.auth_service.application.exception.UnauthorizedException;
 import com.unionclass.auth_service.application.port.in.AuthUseCase;
+import com.unionclass.auth_service.application.port.in.dto.AuthSignInRequestDto;
+import com.unionclass.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.unionclass.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.unionclass.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.unionclass.auth_service.application.port.out.AuthRepositoryPort;
 import com.unionclass.auth_service.application.port.out.PasswordEncoderPort;
+import com.unionclass.auth_service.application.port.out.TokenProviderPort;
 import com.unionclass.auth_service.domain.model.AuthDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,7 @@ public class AuthService implements AuthUseCase {
 
     private final AuthRepositoryPort authRepositoryPort;
     private final PasswordEncoderPort passwordEncoderPort;
+    private final TokenProviderPort tokenProviderPort;
 
     @Override
     @Transactional
@@ -41,6 +46,36 @@ public class AuthService implements AuthUseCase {
                 .logInId(saved.getLogInId())
                 .email(saved.getEmail())
                 .name(saved.getName())
+                .build();
+    }
+
+    @Override
+    public AuthSignInResultDto signIn(AuthSignInRequestDto requestDto) {
+        String logInId = requestDto.getLogInId() == null ? "" : requestDto.getLogInId().trim();
+        String password = requestDto.getPassword();
+
+        if (logInId.isBlank() || password == null || password.isBlank()) {
+            throw new UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        AuthDomain auth = authRepositoryPort.findByLogInIdAndNotDeleted(logInId)
+                .orElseThrow(() -> new UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다."));
+
+        if (!passwordEncoderPort.matches(password, auth.getPassword())) {
+            throw new UnauthorizedException("아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        return AuthSignInResultDto.builder()
+                .accessToken(tokenProviderPort.createAccessToken(
+                        auth.getUserId(),
+                        auth.getLogInId(),
+                        auth.getName()
+                ))
+                .refreshToken(tokenProviderPort.createRefreshToken(auth.getUserId()))
+                .userId(auth.getUserId())
+                .logInId(auth.getLogInId())
+                .name(auth.getName())
+                .email(auth.getEmail())
                 .build();
     }
 
