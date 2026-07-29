@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.domain.model;
+package com.sparta.auth_service.domain.model;
 
 import lombok.AccessLevel;
 import lombok.Builder;

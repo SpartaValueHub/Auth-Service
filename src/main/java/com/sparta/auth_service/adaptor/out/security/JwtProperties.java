@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.adaptor.out.security;
+package com.sparta.auth_service.adaptor.out.security;
 
 import lombok.Getter;
 import lombok.Setter;

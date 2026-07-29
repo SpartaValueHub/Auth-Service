@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.adaptor.out.mysql.entity;
+package com.sparta.auth_service.adaptor.out.mysql.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

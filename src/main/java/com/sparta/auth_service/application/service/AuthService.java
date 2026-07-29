@@ -1,15 +1,15 @@
-package com.unionclass.auth_service.application.service;
+package com.sparta.auth_service.application.service;
 
-import com.unionclass.auth_service.application.exception.UnauthorizedException;
-import com.unionclass.auth_service.application.port.in.AuthUseCase;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignInRequestDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignInResultDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignUpRequestDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignUpResultDto;
-import com.unionclass.auth_service.application.port.out.AuthRepositoryPort;
-import com.unionclass.auth_service.application.port.out.PasswordEncoderPort;
-import com.unionclass.auth_service.application.port.out.TokenProviderPort;
-import com.unionclass.auth_service.domain.model.AuthDomain;
+import com.sparta.auth_service.application.exception.UnauthorizedException;
+import com.sparta.auth_service.application.port.in.AuthUseCase;
+import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
+import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
+import com.sparta.auth_service.application.port.out.TokenProviderPort;
+import com.sparta.auth_service.domain.model.AuthDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

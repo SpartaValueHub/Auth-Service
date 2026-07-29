@@ -1,6 +1,6 @@
-package com.unionclass.auth_service.adaptor.out.security;
+package com.sparta.auth_service.adaptor.out.security;
 
-import com.unionclass.auth_service.application.port.out.TokenProviderPort;
+import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;

@@ -1,6 +1,6 @@
-package com.unionclass.auth_service.adaptor.out.mysql.repository;
+package com.sparta.auth_service.adaptor.out.mysql.repository;
 
-import com.unionclass.auth_service.adaptor.out.mysql.entity.AuthEntity;
+import com.sparta.auth_service.adaptor.out.mysql.entity.AuthEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

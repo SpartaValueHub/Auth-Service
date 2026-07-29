@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.application.exception;
+package com.sparta.auth_service.application.exception;
 
 public class UnauthorizedException extends RuntimeException {
 

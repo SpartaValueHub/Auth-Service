@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.application.port.out;
+package com.sparta.auth_service.application.port.out;
 
 public interface TokenProviderPort {
 

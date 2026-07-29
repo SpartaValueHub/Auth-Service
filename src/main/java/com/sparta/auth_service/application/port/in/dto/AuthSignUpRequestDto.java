@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.application.port.in.dto;
+package com.sparta.auth_service.application.port.in.dto;
 
 import lombok.Builder;
 import lombok.Getter;
