@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.adaptor.in.web.config;
+package com.sparta.auth_service.adaptor.in.web.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

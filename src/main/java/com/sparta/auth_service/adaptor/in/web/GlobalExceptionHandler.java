@@ -1,6 +1,6 @@
-package com.unionclass.auth_service.adaptor.in.web;
+package com.sparta.auth_service.adaptor.in.web;
 
-import com.unionclass.auth_service.application.exception.UnauthorizedException;
+import com.sparta.auth_service.application.exception.UnauthorizedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

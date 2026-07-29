@@ -18,7 +18,7 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
@@ -35,3 +35,18 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local / secrets ###
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.jks
+**/secrets/
+**/application-secret.yml
+**/application-local-secret.yml
+**/application-override.yml
+*.log
+.DS_Store

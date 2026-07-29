@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.adaptor.in.web.config;
+package com.sparta.auth_service.adaptor.in.web.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;

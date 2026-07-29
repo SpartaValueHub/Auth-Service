@@ -1,10 +1,10 @@
-package com.unionclass.auth_service.adaptor.out.mysql;
+package com.sparta.auth_service.adaptor.out.mysql;
 
-import com.unionclass.auth_service.adaptor.out.mysql.entity.AuthEntity;
-import com.unionclass.auth_service.adaptor.out.mysql.mapper.AuthEntityMapper;
-import com.unionclass.auth_service.adaptor.out.mysql.repository.AuthRepository;
-import com.unionclass.auth_service.application.port.out.AuthRepositoryPort;
-import com.unionclass.auth_service.domain.model.AuthDomain;
+import com.sparta.auth_service.adaptor.out.mysql.entity.AuthEntity;
+import com.sparta.auth_service.adaptor.out.mysql.mapper.AuthEntityMapper;
+import com.sparta.auth_service.adaptor.out.mysql.repository.AuthRepository;
+import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
+import com.sparta.auth_service.domain.model.AuthDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

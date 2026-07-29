@@ -1,7 +1,7 @@
-package com.unionclass.auth_service.adaptor.out.mysql.mapper;
+package com.sparta.auth_service.adaptor.out.mysql.mapper;
 
-import com.unionclass.auth_service.adaptor.out.mysql.entity.AuthEntity;
-import com.unionclass.auth_service.domain.model.AuthDomain;
+import com.sparta.auth_service.adaptor.out.mysql.entity.AuthEntity;
+import com.sparta.auth_service.domain.model.AuthDomain;
 import org.springframework.stereotype.Component;
 
 @Component

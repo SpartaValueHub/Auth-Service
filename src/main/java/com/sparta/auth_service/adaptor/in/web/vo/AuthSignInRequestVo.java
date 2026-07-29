@@ -1,4 +1,4 @@
-package com.unionclass.auth_service.adaptor.in.web.vo;
+package com.sparta.auth_service.adaptor.in.web.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
