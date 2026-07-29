@@ -1,0 +1,16 @@
+.git
+.github
+.idea
+.gradle
+build
+.env
+.env.*
+secrets/
+*.key
+*.pem
+*.p12
+*.jks
+**/application-secret.yml
+**/application-local-secret.yml
+*.iml
+.run
