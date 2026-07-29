@@ -1,6 +1,6 @@
-package com.unionclass.auth_service.adaptor.out.security;
+package com.sparta.auth_service.adaptor.out.security;
 
-import com.unionclass.auth_service.application.port.out.PasswordEncoderPort;
+import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 

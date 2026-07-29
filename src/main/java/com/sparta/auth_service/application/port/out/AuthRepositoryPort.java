@@ -1,6 +1,6 @@
-package com.unionclass.auth_service.application.port.out;
+package com.sparta.auth_service.application.port.out;
 
-import com.unionclass.auth_service.domain.model.AuthDomain;
+import com.sparta.auth_service.domain.model.AuthDomain;
 
 import java.util.Optional;
 

@@ -1,15 +1,15 @@
-package com.unionclass.auth_service.adaptor.in.web;
+package com.sparta.auth_service.adaptor.in.web;
 
-import com.unionclass.auth_service.adaptor.in.web.mapper.AuthWebMapper;
-import com.unionclass.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
-import com.unionclass.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
-import com.unionclass.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
-import com.unionclass.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
-import com.unionclass.auth_service.application.port.in.AuthUseCase;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignInRequestDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignInResultDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignUpRequestDto;
-import com.unionclass.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.adaptor.in.web.mapper.AuthWebMapper;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
+import com.sparta.auth_service.application.port.in.AuthUseCase;
+import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
