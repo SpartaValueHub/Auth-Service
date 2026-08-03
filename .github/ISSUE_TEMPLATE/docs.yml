@@ -1,0 +1,22 @@
+name: Docs
+description: 문서를 수정합니다.
+title: "[Docs] "
+labels:
+  - Docs
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 수정 내용
+      description: 수정할 문서를 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 작업할 내용
+      value: |
+        - [ ]
+        - [ ]
