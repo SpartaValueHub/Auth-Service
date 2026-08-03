@@ -1,0 +1,23 @@
+name: Chore
+description: 설정 및 기타 작업입니다.
+title: "[Chore] "
+labels:
+  - Chore
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 작업 내용
+      description: 수행할 작업을 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 작업할 내용
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]

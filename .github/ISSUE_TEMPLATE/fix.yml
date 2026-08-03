@@ -1,0 +1,41 @@
+name: Fix
+description: 버그를 수정합니다.
+title: "[Fix] "
+labels:
+  - Fix
+
+body:
+  - type: textarea
+    id: bug
+    attributes:
+      label: 버그 내용
+      description: 어떤 문제가 발생했는지 작성해주세요.
+      placeholder: 예) 로그인 시 401 에러가 발생합니다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: cause
+    attributes:
+      label: 원인
+      description: 예상되는 원인이나 확인한 내용을 작성해주세요.
+      placeholder: 예) JWT 만료 처리 로직 문제로 예상됩니다.
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 수정할 내용
+      description: 수정할 작업을 체크박스 형태로 작성해주세요.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 참고 자료
+      description: 관련 로그, 에러 메시지, 링크가 있다면 작성해주세요.
+      placeholder: 로그, 스크린샷, 관련 이슈 링크 등

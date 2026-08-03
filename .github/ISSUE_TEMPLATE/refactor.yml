@@ -1,0 +1,31 @@
+name: Refactor
+description: 코드 구조를 개선합니다.
+title: "[Refactor] "
+labels:
+  - Refactor
+
+body:
+  - type: textarea
+    id: reason
+    attributes:
+      label: 리팩토링 이유
+      description: 왜 리팩토링이 필요한지 작성해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 작업할 내용
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: 참고 자료
+      placeholder: 관련 링크나 문서를 작성해주세요.
