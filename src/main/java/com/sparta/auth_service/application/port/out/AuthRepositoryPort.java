@@ -4,15 +4,20 @@ import com.sparta.auth_service.domain.model.AuthDomain;
 
 import java.util.Optional;
 
+/** auth 계정 영속화 — loginId·email·identityKey(CI) 중복은 DB unique + Application 검증 */
 public interface AuthRepositoryPort {
 
-    boolean existsByLogInId(String logInId);
+    boolean existsByLoginId(String loginId);
 
-    boolean existsByEmailAndNotDeleted(String email);
+    boolean existsByEmail(String email);
 
-    boolean existsByPhoneAndNotDeleted(String phone);
+    boolean existsByPhoneNumber(String phoneNumber);
 
-    Optional<AuthDomain> findByLogInIdAndNotDeleted(String logInId);
+    boolean existsByIdentityKey(String identityKey);
+
+    Optional<AuthDomain> findByLoginId(String loginId);
+
+    Optional<AuthDomain> findByAuthUuid(String authUuid);
 
     AuthDomain save(AuthDomain authDomain);
 }

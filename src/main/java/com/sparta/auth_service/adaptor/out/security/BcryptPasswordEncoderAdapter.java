@@ -4,6 +4,7 @@ import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/** BCrypt — 평문 비밀번호는 encode 후 Domain·DB에는 hash만 저장 */
 @Component
 public class BcryptPasswordEncoderAdapter implements PasswordEncoderPort {
 

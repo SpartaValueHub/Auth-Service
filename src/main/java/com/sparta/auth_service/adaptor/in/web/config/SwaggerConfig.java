@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** 직접 접근 시 Swagger — 운영·FE 연동은 Gateway(/auth-service) 경유 권장 */
 @Configuration
 public class SwaggerConfig {
 
