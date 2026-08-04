@@ -15,6 +15,7 @@ public class AuthEntityMapper {
                 .memberName(domain.getMemberName())
                 .birthdayDate(domain.getBirthdayDate())
                 .phoneNumber(domain.getPhoneNumber())
+                .gender(domain.getGender())
                 .email(domain.getEmail())
                 .identityKey(domain.getIdentityKey())
                 .passwordHash(domain.getPasswordHash())
@@ -28,6 +29,7 @@ public class AuthEntityMapper {
         entity.setMemberName(domain.getMemberName());
         entity.setBirthdayDate(domain.getBirthdayDate());
         entity.setPhoneNumber(domain.getPhoneNumber());
+        entity.setGender(domain.getGender());
         entity.setEmail(domain.getEmail());
         entity.setIdentityKey(domain.getIdentityKey());
         entity.setPasswordHash(domain.getPasswordHash());
@@ -43,6 +45,7 @@ public class AuthEntityMapper {
                 entity.getMemberName(),
                 entity.getBirthdayDate(),
                 entity.getPhoneNumber(),
+                entity.getGender(),
                 entity.getEmail(),
                 entity.getIdentityKey(),
                 entity.getPasswordHash(),

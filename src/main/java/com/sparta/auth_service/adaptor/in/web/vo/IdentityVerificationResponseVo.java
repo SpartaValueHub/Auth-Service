@@ -1,5 +1,6 @@
 package com.sparta.auth_service.adaptor.in.web.vo;
 
+import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.enums.VerificationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,4 +32,7 @@ public class IdentityVerificationResponseVo {
 
     @Schema(description = "인증된 생년월일 (SUCCESS 시)")
     private final LocalDate birthdayDate;
+
+    @Schema(description = "인증된 성별 (SUCCESS 시) — MALE | FEMALE | OTHER")
+    private final Gender gender;
 }

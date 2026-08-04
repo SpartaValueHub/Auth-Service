@@ -71,7 +71,7 @@ Eureka Dashboard (`http://localhost:8761`) 에서 `AUTH-SERVICE` 등록을 확�
 
 | 변수 | 설명 |
 |------|------|
-| `SPRING_DATASOURCE_URL` | MySQL JDBC URL |
+| `SPRING_DATASOURCE_URL` | MySQL JDBC URL (팀 고정: `192.168.10.45:3307/auth_db`) |
 | `SPRING_DATASOURCE_USERNAME` | DB 사용자 |
 | `SPRING_DATASOURCE_PASSWORD` | DB 비밀번호 |
 | `PORTONE_API_SECRET` | PortOne V2 API Secret (**직접 입력**) |
@@ -84,7 +84,7 @@ Gateway(local, JWT on): `JWT_PUBLIC_KEY_LOCATION=file:../auth-service/keys/jwt-p
 
 | 변수 | 설명 |
 |------|------|
-| `SPRING_DATASOURCE_URL` | MySQL JDBC URL |
+| `SPRING_DATASOURCE_URL` | MySQL JDBC URL (팀 고정: `192.168.10.45:3307/auth_db`) |
 | `SPRING_DATASOURCE_USERNAME` | DB 사용자 |
 | `SPRING_DATASOURCE_PASSWORD` | DB 비밀번호 |
 | `PORTONE_API_SECRET` | PortOne V2 API Secret |

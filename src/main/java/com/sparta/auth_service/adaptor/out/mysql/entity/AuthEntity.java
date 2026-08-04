@@ -1,8 +1,11 @@
 package com.sparta.auth_service.adaptor.out.mysql.entity;
 
+import com.sparta.auth_service.domain.enums.Gender;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -48,6 +51,10 @@ public class AuthEntity {
     @Column(name = "phone_number", nullable = false, length = 20)
     private String phoneNumber;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gender", nullable = false, length = 10)
+    private Gender gender;
+
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
@@ -84,6 +91,7 @@ public class AuthEntity {
             String memberName,
             LocalDate birthdayDate,
             String phoneNumber,
+            Gender gender,
             String email,
             String identityKey,
             String passwordHash,
@@ -96,6 +104,7 @@ public class AuthEntity {
         this.memberName = memberName;
         this.birthdayDate = birthdayDate;
         this.phoneNumber = phoneNumber;
+        this.gender = gender;
         this.email = email;
         this.identityKey = identityKey;
         this.passwordHash = passwordHash;

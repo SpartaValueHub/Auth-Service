@@ -6,6 +6,7 @@ import com.sparta.auth_service.application.port.in.dto.IdentityVerificationConfi
 import com.sparta.auth_service.application.port.out.FetchIdentityVerificationPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
+import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.enums.VerificationStatus;
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
@@ -139,6 +140,7 @@ class IdentityVerificationServiceTest {
                 .memberName("홍길동")
                 .phoneNumber("01012345678")
                 .birthdayDate(LocalDate.of(1990, 1, 1))
+                .gender(Gender.MALE)
                 .build();
     }
 

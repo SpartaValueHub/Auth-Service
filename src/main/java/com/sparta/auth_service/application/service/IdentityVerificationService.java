@@ -104,7 +104,8 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
         }
         if (external.getMemberName() == null || external.getMemberName().isBlank()
                 || external.getPhoneNumber() == null || external.getPhoneNumber().isBlank()
-                || external.getBirthdayDate() == null) {
+                || external.getBirthdayDate() == null
+                || external.getGender() == null) {
             throw new IdentityVerificationFailedException("본인인증 고객 정보가 불완전합니다.");
         }
     }
@@ -121,6 +122,7 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
                 .memberName(external != null ? external.getMemberName() : null)
                 .phoneNumber(external != null ? external.getPhoneNumber() : null)
                 .birthdayDate(external != null ? external.getBirthdayDate() : null)
+                .gender(external != null ? external.getGender() : null)
                 .build();
     }
 }
