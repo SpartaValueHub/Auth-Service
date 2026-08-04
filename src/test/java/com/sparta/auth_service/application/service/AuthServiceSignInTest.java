@@ -12,6 +12,7 @@ import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.domain.model.AuthDomain;
+import com.sparta.auth_service.domain.enums.Gender;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -117,6 +118,7 @@ class AuthServiceSignInTest {
                 "홍길동",
                 LocalDate.of(1990, 1, 1),
                 "01012345678",
+                Gender.MALE,
                 "user@example.com",
                 "ci-value-001",
                 PASSWORD_HASH,

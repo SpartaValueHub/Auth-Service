@@ -1,5 +1,6 @@
 package com.sparta.auth_service.application.port.in.dto;
 
+import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.enums.VerificationStatus;
 import lombok.Builder;
@@ -18,4 +19,5 @@ public class IdentityVerificationResultDto {
     private final String memberName;
     private final String phoneNumber;
     private final LocalDate birthdayDate;
+    private final Gender gender;
 }

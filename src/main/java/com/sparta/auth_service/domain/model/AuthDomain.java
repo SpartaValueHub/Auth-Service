@@ -11,6 +11,8 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import com.sparta.auth_service.domain.enums.Gender;
+
 /**
  * 인증 계정 도메인 — 로그인·CI·잠금 정책.
  * authUuid가 외부 식별자(PK 아님). 닉네임은 member-service 소유.
@@ -37,6 +39,7 @@ public class AuthDomain {
     private String memberName;
     private LocalDate birthdayDate;
     private String phoneNumber;
+    private Gender gender;
     private String email;
     /** PortOne CI — 동일인 중복 가입 방지 */
     private String identityKey;
@@ -54,6 +57,7 @@ public class AuthDomain {
             String memberName,
             LocalDate birthdayDate,
             String phoneNumber,
+            Gender gender,
             String identityKey
     ) {
         validateLoginId(loginId);
@@ -62,6 +66,7 @@ public class AuthDomain {
         String trimmedMemberName = validateAndTrimMemberName(memberName);
         validateBirthdayDate(birthdayDate);
         validatePhoneNumber(phoneNumber);
+        validateGender(gender);
         validateIdentityKey(identityKey);
 
         Instant now = Instant.now();
@@ -71,6 +76,7 @@ public class AuthDomain {
                 .memberName(trimmedMemberName)
                 .birthdayDate(birthdayDate)
                 .phoneNumber(phoneNumber.trim())
+                .gender(gender)
                 .email(normalizedEmail)
                 .identityKey(identityKey.trim())
                 .passwordHash(passwordHash)
@@ -86,6 +92,7 @@ public class AuthDomain {
             String memberName,
             LocalDate birthdayDate,
             String phoneNumber,
+            Gender gender,
             String email,
             String identityKey,
             String passwordHash,
@@ -101,6 +108,7 @@ public class AuthDomain {
                 .memberName(memberName)
                 .birthdayDate(birthdayDate)
                 .phoneNumber(phoneNumber)
+                .gender(gender)
                 .email(email)
                 .identityKey(identityKey)
                 .passwordHash(passwordHash)
@@ -120,6 +128,7 @@ public class AuthDomain {
                 .memberName(this.memberName)
                 .birthdayDate(this.birthdayDate)
                 .phoneNumber(this.phoneNumber)
+                .gender(this.gender)
                 .email(this.email)
                 .identityKey(this.identityKey)
                 .passwordHash(passwordHash)
@@ -156,6 +165,7 @@ public class AuthDomain {
                 .memberName(this.memberName)
                 .birthdayDate(this.birthdayDate)
                 .phoneNumber(this.phoneNumber)
+                .gender(this.gender)
                 .email(this.email)
                 .identityKey(this.identityKey)
                 .passwordHash(this.passwordHash)
@@ -228,6 +238,12 @@ public class AuthDomain {
         }
     }
 
+    private static void validateGender(Gender gender) {
+        if (gender == null) {
+            throw new IllegalArgumentException("gender는 필수입니다.");
+        }
+    }
+
     private static void validateIdentityKey(String identityKey) {
         // CI(identityKey) — 동일인 중복 가입 방지용, auth 테이블에만 저장
         if (identityKey == null || identityKey.isBlank()) {
@@ -242,6 +258,7 @@ public class AuthDomain {
             String memberName,
             LocalDate birthdayDate,
             String phoneNumber,
+            Gender gender,
             String email,
             String identityKey,
             String passwordHash,
@@ -256,6 +273,7 @@ public class AuthDomain {
         this.memberName = memberName;
         this.birthdayDate = birthdayDate;
         this.phoneNumber = phoneNumber;
+        this.gender = gender;
         this.email = email;
         this.identityKey = identityKey;
         this.passwordHash = passwordHash;

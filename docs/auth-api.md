@@ -188,6 +188,7 @@ PortOne 본인인증 완료 후 서버에서 인증 결과를 확인하고 이�
 | memberName | string |
 | phoneNumber | string |
 | birthdayDate | string |
+| gender | enum (`MALE` \| `FEMALE` \| `OTHER`) |
 
 ### Errors
 

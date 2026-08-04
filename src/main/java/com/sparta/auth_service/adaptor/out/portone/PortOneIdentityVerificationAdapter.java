@@ -3,6 +3,7 @@ package com.sparta.auth_service.adaptor.out.portone;
 import com.sparta.auth_service.adaptor.out.portone.dto.PortOneIdentityVerificationResponse;
 import com.sparta.auth_service.application.port.out.FetchIdentityVerificationPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
+import com.sparta.auth_service.domain.enums.Gender;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -55,6 +56,7 @@ public class PortOneIdentityVerificationAdapter implements FetchIdentityVerifica
                     .memberName(customer != null ? customer.getName() : null)
                     .phoneNumber(customer != null ? customer.getPhoneNumber() : null)
                     .birthdayDate(parseBirthDate(customer))
+                    .gender(parseGender(customer != null ? customer.getGender() : null))
                     .build());
         } catch (RestClientResponseException ex) {
             if (ex.getStatusCode().value() == 404) {
@@ -71,5 +73,17 @@ public class PortOneIdentityVerificationAdapter implements FetchIdentityVerifica
             return null;
         }
         return LocalDate.parse(customer.getBirthDate());
+    }
+
+    private static Gender parseGender(String rawGender) {
+        if (rawGender == null || rawGender.isBlank()) {
+            return null;
+        }
+        return switch (rawGender.trim().toUpperCase()) {
+            case "MALE" -> Gender.MALE;
+            case "FEMALE" -> Gender.FEMALE;
+            case "OTHER" -> Gender.OTHER;
+            default -> null;
+        };
     }
 }

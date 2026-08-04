@@ -91,6 +91,7 @@ public class AuthService implements AuthUseCase {
                 external.getMemberName(),
                 external.getBirthdayDate(),
                 external.getPhoneNumber(),
+                external.getGender(),
                 external.getIdentityKey()
         );
 
@@ -229,7 +230,8 @@ public class AuthService implements AuthUseCase {
         }
         if (external.getMemberName() == null || external.getMemberName().isBlank()
                 || external.getPhoneNumber() == null || external.getPhoneNumber().isBlank()
-                || external.getBirthdayDate() == null) {
+                || external.getBirthdayDate() == null
+                || external.getGender() == null) {
             throw new IdentityVerificationFailedException("본인인증 고객 정보가 불완전합니다.");
         }
     }

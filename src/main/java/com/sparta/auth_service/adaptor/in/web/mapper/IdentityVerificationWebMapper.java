@@ -25,6 +25,7 @@ public class IdentityVerificationWebMapper {
                 .memberName(dto.getMemberName())
                 .phoneNumber(dto.getPhoneNumber())
                 .birthdayDate(dto.getBirthdayDate())
+                .gender(dto.getGender())
                 .build();
     }
 }

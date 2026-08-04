@@ -1,5 +1,6 @@
 package com.sparta.auth_service.domain.model;
 
+import com.sparta.auth_service.domain.enums.Gender;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -22,6 +23,7 @@ class AuthDomainTest {
                 "홍길동",
                 BIRTHDAY,
                 "01012345678",
+                Gender.MALE,
                 "ci-value-001"
         );
 
@@ -30,6 +32,7 @@ class AuthDomainTest {
         assertThat(auth.getEmail()).isEqualTo("user@example.com");
         assertThat(auth.getMemberName()).isEqualTo("홍길동");
         assertThat(auth.getBirthdayDate()).isEqualTo(BIRTHDAY);
+        assertThat(auth.getGender()).isEqualTo(Gender.MALE);
         assertThat(auth.getLoginFailCount()).isZero();
         assertThat(auth.getLockedUntil()).isNull();
         assertThat(auth.getPasswordChangedAt()).isNotNull();
@@ -41,7 +44,7 @@ class AuthDomainTest {
     void createSignUp_rejectsBlankMemberName() {
         assertThatThrownBy(() -> AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "user@example.com", "  ",
-                BIRTHDAY, "01012345678", "ci-value-001"))
+                BIRTHDAY, "01012345678", Gender.MALE, "ci-value-001"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("memberName");
     }
@@ -50,7 +53,7 @@ class AuthDomainTest {
     void createSignUp_rejectsTooLongMemberName() {
         assertThatThrownBy(() -> AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "user@example.com", "a".repeat(31),
-                BIRTHDAY, "01012345678", "ci-value-001"))
+                BIRTHDAY, "01012345678", Gender.MALE, "ci-value-001"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("memberName");
     }
@@ -59,7 +62,7 @@ class AuthDomainTest {
     void createSignUp_rejectsFutureBirthdayDate() {
         assertThatThrownBy(() -> AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "user@example.com", "홍길동",
-                LocalDate.now().plusDays(1), "01012345678", "ci-value-001"))
+                LocalDate.now().plusDays(1), "01012345678", Gender.MALE, "ci-value-001"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("birthdayDate");
     }
@@ -68,7 +71,7 @@ class AuthDomainTest {
     void createSignUp_normalizesEmailToLowerCase() {
         AuthDomain auth = AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "MixedCase@Example.COM", "홍길동",
-                BIRTHDAY, "01012345678", "ci-value-001");
+                BIRTHDAY, "01012345678", Gender.MALE, "ci-value-001");
 
         assertThat(auth.getEmail()).isEqualTo("mixedcase@example.com");
     }
@@ -86,6 +89,7 @@ class AuthDomainTest {
                 "홍길동",
                 BIRTHDAY,
                 "01012345678",
+                Gender.MALE,
                 "user@example.com",
                 "ci-value-001",
                 PASSWORD_HASH,
@@ -116,6 +120,7 @@ class AuthDomainTest {
                 "홍길동",
                 BIRTHDAY,
                 "01012345678",
+                Gender.MALE,
                 "user@example.com",
                 "ci-value-001",
                 PASSWORD_HASH,
@@ -189,6 +194,7 @@ class AuthDomainTest {
                 "홍길동",
                 BIRTHDAY,
                 "01012345678",
+                Gender.MALE,
                 "user@example.com",
                 "ci-value-001",
                 PASSWORD_HASH,

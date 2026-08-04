@@ -1,5 +1,6 @@
 package com.sparta.auth_service.application.port.out.dto;
 
+import com.sparta.auth_service.domain.enums.Gender;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -20,4 +21,5 @@ public class ExternalIdentityVerificationDto {
     private final String memberName;
     private final String phoneNumber;
     private final LocalDate birthdayDate;
+    private final Gender gender;
 }

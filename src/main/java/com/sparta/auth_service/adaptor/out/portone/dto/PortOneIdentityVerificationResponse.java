@@ -30,5 +30,7 @@ public class PortOneIdentityVerificationResponse {
 
         @JsonProperty("birthDate")
         private String birthDate;
+
+        private String gender;
     }
 }
