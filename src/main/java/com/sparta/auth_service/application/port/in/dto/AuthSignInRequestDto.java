@@ -7,6 +7,6 @@ import lombok.Getter;
 @Builder
 public class AuthSignInRequestDto {
 
-    private final String logInId;
+    private final String loginId;
     private final String password;
 }

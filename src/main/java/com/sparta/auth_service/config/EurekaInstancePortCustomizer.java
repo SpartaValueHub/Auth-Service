@@ -10,6 +10,10 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
+/**
+ * server.port=0(랜덤) 기동 시 Eureka instance-id를 실제 포트로 맞춤.
+ * Gateway lb:// 라우팅 stale port 방지 — auth-service:실제포트 형식.
+ */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class EurekaInstancePortCustomizer implements ApplicationListener<WebServerInitializedEvent> {
@@ -30,7 +34,7 @@ public class EurekaInstancePortCustomizer implements ApplicationListener<WebServ
 		String appName = environment.getProperty("spring.application.name", "application");
 		String instanceId = appName + ":" + port;
 		instanceConfig.setInstanceId(instanceId);
-		log.info("Local connection test -> http://localhost:{}/ (Eureka instance-id: {})", port, instanceId);
+		log.info("Auth service started on port {} (Eureka instance-id: {})", port, instanceId);
 	}
 
 }

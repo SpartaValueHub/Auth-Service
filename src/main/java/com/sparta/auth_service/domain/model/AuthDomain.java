@@ -5,143 +5,264 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * 인증 계정 도메인 — 로그인·CI·잠금 정책.
+ * authUuid가 외부 식별자(PK 아님). 닉네임은 member-service 소유.
+ */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AuthDomain {
 
+    private static final Pattern LOGIN_ID_PATTERN = Pattern.compile("^[a-z0-9]{4,20}$");
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-    private static final Pattern PHONE_PATTERN =
-            Pattern.compile("^01[016789]\\d{7,8}$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^01[016789]\\d{7,8}$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()\\-+_=])[A-Za-z\\d!@#$%^&*()\\-+_=]{8,20}$"
+    );
 
-    private String userId;
-    private String logInId;
-    private String password;
+    private static final int MAX_LOGIN_FAIL_COUNT = 5;
+    /** 5회 연속 실패 시 계정 잠금 시간(분) */
+    private static final long LOCK_MINUTES = 10;
+
+    /** 외부 식별자 — JWT·API 응답에 사용, DB PK(auth_id)와 분리 */
+    private String authUuid;
+    private String loginId;
+    private String memberName;
+    private LocalDate birthdayDate;
+    private String phoneNumber;
     private String email;
-    private String name;
-    private String phone;
-    private boolean deleted;
+    /** PortOne CI — 동일인 중복 가입 방지 */
+    private String identityKey;
+    private String passwordHash;
+    private Instant passwordChangedAt;
+    private int loginFailCount;
+    private Instant lockedUntil;
+    private Instant createdAt;
+    private Instant updatedAt;
 
     public static AuthDomain createSignUp(
-            String logInId,
-            String rawPassword,
+            String loginId,
+            String passwordHash,
             String email,
-            String name,
-            String phone
+            String memberName,
+            LocalDate birthdayDate,
+            String phoneNumber,
+            String identityKey
     ) {
-        validateLogInId(logInId);
-        validatePassword(rawPassword);
-        validateEmail(email);
-        validateName(name);
-        validatePhone(phone);
+        validateLoginId(loginId);
+        validatePasswordHash(passwordHash);
+        String normalizedEmail = normalizeEmail(email);
+        String trimmedMemberName = validateAndTrimMemberName(memberName);
+        validateBirthdayDate(birthdayDate);
+        validatePhoneNumber(phoneNumber);
+        validateIdentityKey(identityKey);
 
+        Instant now = Instant.now();
         return AuthDomain.builder()
-                .userId(UUID.randomUUID().toString())
-                .logInId(logInId.trim())
-                .password(rawPassword)
-                .email(email.trim())
-                .name(name.trim())
-                .phone(phone.trim())
-                .deleted(false)
+                .authUuid(UUID.randomUUID().toString())
+                .loginId(loginId.trim())
+                .memberName(trimmedMemberName)
+                .birthdayDate(birthdayDate)
+                .phoneNumber(phoneNumber.trim())
+                .email(normalizedEmail)
+                .identityKey(identityKey.trim())
+                .passwordHash(passwordHash)
+                .passwordChangedAt(now)
+                .loginFailCount(0)
+                .lockedUntil(null)
                 .build();
     }
 
     public static AuthDomain reconstitute(
-            String userId,
-            String logInId,
-            String password,
+            String authUuid,
+            String loginId,
+            String memberName,
+            LocalDate birthdayDate,
+            String phoneNumber,
             String email,
-            String name,
-            String phone,
-            boolean deleted
+            String identityKey,
+            String passwordHash,
+            Instant passwordChangedAt,
+            int loginFailCount,
+            Instant lockedUntil,
+            Instant createdAt,
+            Instant updatedAt
     ) {
         return AuthDomain.builder()
-                .userId(userId)
-                .logInId(logInId)
-                .password(password)
+                .authUuid(authUuid)
+                .loginId(loginId)
+                .memberName(memberName)
+                .birthdayDate(birthdayDate)
+                .phoneNumber(phoneNumber)
                 .email(email)
-                .name(name)
-                .phone(phone)
-                .deleted(deleted)
+                .identityKey(identityKey)
+                .passwordHash(passwordHash)
+                .passwordChangedAt(passwordChangedAt)
+                .loginFailCount(loginFailCount)
+                .lockedUntil(lockedUntil)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
                 .build();
     }
 
-    public AuthDomain withEncodedPassword(String encodedPassword) {
-        if (encodedPassword == null || encodedPassword.isBlank()) {
-            throw new IllegalArgumentException("암호화된 비밀번호는 필수입니다.");
-        }
+    public AuthDomain changePasswordHash(String passwordHash) {
+        validatePasswordHash(passwordHash);
         return AuthDomain.builder()
-                .userId(this.userId)
-                .logInId(this.logInId)
-                .password(encodedPassword)
+                .authUuid(this.authUuid)
+                .loginId(this.loginId)
+                .memberName(this.memberName)
+                .birthdayDate(this.birthdayDate)
+                .phoneNumber(this.phoneNumber)
                 .email(this.email)
-                .name(this.name)
-                .phone(this.phone)
-                .deleted(this.deleted)
+                .identityKey(this.identityKey)
+                .passwordHash(passwordHash)
+                .passwordChangedAt(Instant.now())
+                .loginFailCount(this.loginFailCount)
+                .lockedUntil(this.lockedUntil)
+                .createdAt(this.createdAt)
+                .updatedAt(this.updatedAt)
                 .build();
     }
 
-    private static void validateLogInId(String logInId) {
-        if (logInId == null || logInId.isBlank()) {
-            throw new IllegalArgumentException("loginId는 필수입니다.");
-        }
-        if (logInId.trim().length() < 4) {
-            throw new IllegalArgumentException("loginId는 4자 이상이어야 합니다.");
+    public boolean isLocked(Instant now) {
+        return lockedUntil != null && lockedUntil.isAfter(now);
+    }
+
+    public AuthDomain recordLoginFailure(Instant now) {
+        int nextFailCount = this.loginFailCount + 1;
+        // MAX_LOGIN_FAIL_COUNT 도달 시 lockedUntil 설정 — Domain에서 상태 전이만 담당
+        Instant nextLockedUntil = nextFailCount >= MAX_LOGIN_FAIL_COUNT
+                ? now.plusSeconds(LOCK_MINUTES * 60)
+                : this.lockedUntil;
+
+        return copyWithLoginState(nextFailCount, nextLockedUntil);
+    }
+
+    public AuthDomain resetLoginFailure() {
+        return copyWithLoginState(0, null);
+    }
+
+    private AuthDomain copyWithLoginState(int loginFailCount, Instant lockedUntil) {
+        return AuthDomain.builder()
+                .authUuid(this.authUuid)
+                .loginId(this.loginId)
+                .memberName(this.memberName)
+                .birthdayDate(this.birthdayDate)
+                .phoneNumber(this.phoneNumber)
+                .email(this.email)
+                .identityKey(this.identityKey)
+                .passwordHash(this.passwordHash)
+                .passwordChangedAt(this.passwordChangedAt)
+                .loginFailCount(loginFailCount)
+                .lockedUntil(lockedUntil)
+                .createdAt(this.createdAt)
+                .updatedAt(this.updatedAt)
+                .build();
+    }
+
+    private static void validateLoginId(String loginId) {
+        if (loginId == null || !LOGIN_ID_PATTERN.matcher(loginId.trim()).matches()) {
+            throw new IllegalArgumentException("loginId는 영문 소문자와 숫자 조합 4~20자여야 합니다.");
         }
     }
 
-    private static void validatePassword(String password) {
-        if (password == null || password.isBlank()) {
-            throw new IllegalArgumentException("password는 필수입니다.");
-        }
-        if (password.length() < 8) {
-            throw new IllegalArgumentException("password는 8자 이상이어야 합니다.");
+    private static void validatePasswordHash(String passwordHash) {
+        if (passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("passwordHash는 필수입니다.");
         }
     }
 
-    private static void validateEmail(String email) {
+    /** 평문 비밀번호 검증 — Application에서 encode 전에 호출 */
+    public static void validatePlainPassword(String password) {
+        if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new IllegalArgumentException(
+                    "password는 8~20자이며 영문 대소문자, 숫자, 특수문자(!@#$%^&*()-+_=)를 각각 1자 이상 포함해야 합니다."
+            );
+        }
+    }
+
+    private static String normalizeEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("email은 필수입니다.");
+            throw new IllegalArgumentException("email은 50자 이하의 유효한 형식이어야 합니다.");
         }
-        if (!EMAIL_PATTERN.matcher(email.trim()).matches()) {
+        String trimmed = email.trim();
+        if (trimmed.length() > 50) {
+            throw new IllegalArgumentException("email은 50자 이하의 유효한 형식이어야 합니다.");
+        }
+        if (!EMAIL_PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("email 형식이 올바르지 않습니다.");
         }
+        return trimmed.toLowerCase(Locale.ROOT);
     }
 
-    private static void validateName(String name) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("name은 필수입니다.");
+    private static String validateAndTrimMemberName(String memberName) {
+        if (memberName == null || memberName.isBlank()) {
+            throw new IllegalArgumentException("memberName은 필수입니다.");
+        }
+        String trimmed = memberName.trim();
+        if (trimmed.length() > 30) {
+            throw new IllegalArgumentException("memberName은 30자 이하여야 합니다.");
+        }
+        return trimmed;
+    }
+
+    private static void validateBirthdayDate(LocalDate birthdayDate) {
+        if (birthdayDate == null) {
+            throw new IllegalArgumentException("birthdayDate는 필수입니다.");
+        }
+        if (birthdayDate.isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException("birthdayDate는 미래 날짜일 수 없습니다.");
         }
     }
 
-    private static void validatePhone(String phone) {
-        if (phone == null || phone.isBlank()) {
-            throw new IllegalArgumentException("phone은 필수입니다.");
+    private static void validatePhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || !PHONE_PATTERN.matcher(phoneNumber.trim()).matches()) {
+            throw new IllegalArgumentException("phoneNumber 형식이 올바르지 않습니다.");
         }
-        if (!PHONE_PATTERN.matcher(phone.trim()).matches()) {
-            throw new IllegalArgumentException("phone 형식이 올바르지 않습니다.");
+    }
+
+    private static void validateIdentityKey(String identityKey) {
+        // CI(identityKey) — 동일인 중복 가입 방지용, auth 테이블에만 저장
+        if (identityKey == null || identityKey.isBlank()) {
+            throw new IllegalArgumentException("identityKey(CI)는 필수입니다.");
         }
     }
 
     @Builder(access = AccessLevel.PRIVATE)
     private AuthDomain(
-            String userId,
-            String logInId,
-            String password,
+            String authUuid,
+            String loginId,
+            String memberName,
+            LocalDate birthdayDate,
+            String phoneNumber,
             String email,
-            String name,
-            String phone,
-            boolean deleted
+            String identityKey,
+            String passwordHash,
+            Instant passwordChangedAt,
+            int loginFailCount,
+            Instant lockedUntil,
+            Instant createdAt,
+            Instant updatedAt
     ) {
-        this.userId = userId;
-        this.logInId = logInId;
-        this.password = password;
+        this.authUuid = authUuid;
+        this.loginId = loginId;
+        this.memberName = memberName;
+        this.birthdayDate = birthdayDate;
+        this.phoneNumber = phoneNumber;
         this.email = email;
-        this.name = name;
-        this.phone = phone;
-        this.deleted = deleted;
+        this.identityKey = identityKey;
+        this.passwordHash = passwordHash;
+        this.passwordChangedAt = passwordChangedAt;
+        this.loginFailCount = loginFailCount;
+        this.lockedUntil = lockedUntil;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 }

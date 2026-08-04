@@ -34,14 +34,18 @@ spring.profiles.active: ${SPRING_PROFILES_ACTIVE:local}
 | 항목 | local | dev / prod |
 |------|-------|------------|
 | DB URL / 계정 / 비밀번호 | `.env` | 배포 환경변수 |
-| JWT Secret | `.env` | 배포 환경변수 |
+| JWT RS256 Private Key | `keys/jwt-private.pem` ( `./gradlew generateJwtKeys` ) | 배포 Secret |
+| PortOne V2 API Secret | `.env` `PORTONE_API_SECRET` | 배포 환경변수 |
+| Redis | `.env` / docker-compose | 배포 Redis |
 | Eureka URL (local) | `application-local.yml` (`localhost:8761`) | `${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE}` |
 
 ### 로컬 실행 준비
 
 ```bash
 cp .env.example .env
-# .env 파일에 실제 값 입력
+./gradlew generateJwtKeys
+# .env 에 PORTONE_API_SECRET 만 입력
+docker compose up -d
 ```
 
 개인별 override가 필요하면 Git에 포함되지 않는 `application-local-secret.yml` 을 추가할 수 있습니다.
@@ -70,7 +74,11 @@ Eureka Dashboard (`http://localhost:8761`) 에서 `AUTH-SERVICE` 등록을 확�
 | `SPRING_DATASOURCE_URL` | MySQL JDBC URL |
 | `SPRING_DATASOURCE_USERNAME` | DB 사용자 |
 | `SPRING_DATASOURCE_PASSWORD` | DB 비밀번호 |
-| `JWT_SECRET` | JWT 서명 키 (32자 이상 권장) |
+| `PORTONE_API_SECRET` | PortOne V2 API Secret (**직접 입력**) |
+| `JWT_PRIVATE_KEY_LOCATION` | `./gradlew generateJwtKeys` 로 생성 (기본 `file:./keys/jwt-private.pem`) |
+| `REDIS_HOST` / `REDIS_PORT` | Redis (기본 localhost:6379) |
+
+Gateway(local, JWT on): `JWT_PUBLIC_KEY_LOCATION=file:../auth-service/keys/jwt-public.pem`
 
 ## 필수 환경변수 (dev / prod)
 
@@ -79,5 +87,7 @@ Eureka Dashboard (`http://localhost:8761`) 에서 `AUTH-SERVICE` 등록을 확�
 | `SPRING_DATASOURCE_URL` | MySQL JDBC URL |
 | `SPRING_DATASOURCE_USERNAME` | DB 사용자 |
 | `SPRING_DATASOURCE_PASSWORD` | DB 비밀번호 |
-| `JWT_SECRET` | JWT 서명 키 |
+| `PORTONE_API_SECRET` | PortOne V2 API Secret |
+| `JWT_PRIVATE_KEY` 또는 `JWT_PRIVATE_KEY_LOCATION` | Auth JWT RS256 Private Key |
+| `REDIS_HOST` / `REDIS_PORT` | Redis |
 | `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE` | Eureka Server URL |

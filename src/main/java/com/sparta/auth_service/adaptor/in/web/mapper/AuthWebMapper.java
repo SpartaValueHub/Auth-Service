@@ -1,40 +1,47 @@
 package com.sparta.auth_service.adaptor.in.web.mapper;
 
+import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthLogoutRequestVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthRefreshRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
+import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthLogoutRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthRefreshRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import org.springframework.stereotype.Component;
 
+/** VO ↔ Input DTO 변환 — sign-up은 requestToken·loginId·password·email만 전달 */
 @Component
 public class AuthWebMapper {
 
     public AuthSignUpRequestDto toDto(AuthSignUpRequestVo vo) {
         return AuthSignUpRequestDto.builder()
-                .logInId(vo.getLogInId())
+                .requestToken(vo.getRequestToken())
+                .loginId(vo.getLogInId())
                 .password(vo.getPassword())
                 .email(vo.getEmail())
-                .name(vo.getName())
-                .phone(vo.getPhone())
                 .build();
     }
 
     public AuthSignUpResponseVo toVo(AuthSignUpResultDto dto) {
         return AuthSignUpResponseVo.builder()
-                .userId(dto.getUserId())
-                .logInId(dto.getLogInId())
+                .authUuid(dto.getAuthUuid())
+                .logInId(dto.getLoginId())
                 .email(dto.getEmail())
-                .name(dto.getName())
+                .memberName(dto.getMemberName())
+                .birthdayDate(dto.getBirthdayDate())
                 .build();
     }
 
     public AuthSignInRequestDto toDto(AuthSignInRequestVo vo) {
         return AuthSignInRequestDto.builder()
-                .logInId(vo.getLogInId())
+                .loginId(vo.getLogInId())
                 .password(vo.getPassword())
                 .build();
     }
@@ -43,10 +50,29 @@ public class AuthWebMapper {
         return AuthSignInResponseVo.builder()
                 .accessToken(dto.getAccessToken())
                 .refreshToken(dto.getRefreshToken())
-                .userId(dto.getUserId())
-                .logInId(dto.getLogInId())
-                .name(dto.getName())
+                .authUuid(dto.getAuthUuid())
+                .logInId(dto.getLoginId())
+                .memberName(dto.getMemberName())
                 .email(dto.getEmail())
+                .build();
+    }
+
+    public AuthRefreshRequestDto toDto(AuthRefreshRequestVo vo) {
+        return AuthRefreshRequestDto.builder()
+                .refreshToken(vo.getRefreshToken())
+                .build();
+    }
+
+    public AuthLogoutRequestDto toDto(AuthLogoutRequestVo vo) {
+        return AuthLogoutRequestDto.builder()
+                .accessToken(vo.getAccessToken())
+                .refreshToken(vo.getRefreshToken())
+                .build();
+    }
+
+    public AuthAvailabilityResponseVo toVo(AuthAvailabilityResultDto dto) {
+        return AuthAvailabilityResponseVo.builder()
+                .available(dto.isAvailable())
                 .build();
     }
 }

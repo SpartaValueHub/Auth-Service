@@ -12,6 +12,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
     open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 eureka:
   client:
@@ -19,7 +23,6 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: true
-    # instance-id는 EurekaInstancePortCustomizer에서 실제 할당 포트로 설정 (예: auth-service:51234)
 
 springdoc:
   api-docs:
@@ -28,3 +31,13 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
+
+jwt:
+  access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
+  refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:14}
+  private-key: ${JWT_PRIVATE_KEY:}
+  private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
+
+portone:
+  api-secret: ${PORTONE_API_SECRET}
+  base-url: ${PORTONE_BASE_URL:https://api.portone.io}

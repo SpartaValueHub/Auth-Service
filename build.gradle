@@ -28,6 +28,7 @@ ext {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
@@ -65,4 +66,43 @@ tasks.named('bootRun') {
 			}
 		}
 	}
+}
+
+tasks.register('generateJwtKeys') {
+	group = 'setup'
+	description = 'Generates RSA JWT key pair (keys/jwt-private.pem, keys/jwt-public.pem)'
+
+	doLast {
+		def keysDir = layout.projectDirectory.dir('keys').asFile
+		keysDir.mkdirs()
+
+		def privateKeyFile = new File(keysDir, 'jwt-private.pem')
+		def publicKeyFile = new File(keysDir, 'jwt-public.pem')
+
+		if (privateKeyFile.exists() || publicKeyFile.exists()) {
+			throw new GradleException(
+					'JWT keys already exist in keys/. Delete jwt-private.pem and jwt-public.pem to regenerate.'
+			)
+		}
+
+		def keyPairGenerator = java.security.KeyPairGenerator.getInstance('RSA')
+		keyPairGenerator.initialize(2048)
+		def keyPair = keyPairGenerator.generateKeyPair()
+
+		privateKeyFile.text = toPrivateKeyPem(keyPair.private.encoded)
+		publicKeyFile.text = toPublicKeyPem(keyPair.public.encoded)
+
+		logger.lifecycle('Generated keys/jwt-private.pem and keys/jwt-public.pem')
+		logger.lifecycle('Auth-service uses jwt-private.pem. Copy jwt-public.pem path to gateway JWT_PUBLIC_KEY_LOCATION.')
+	}
+}
+
+static String toPrivateKeyPem(byte[] encoded) {
+	def body = java.util.Base64.getMimeEncoder(64, '\n'.bytes).encodeToString(encoded)
+	return "-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n"
+}
+
+static String toPublicKeyPem(byte[] encoded) {
+	def body = java.util.Base64.getMimeEncoder(64, '\n'.bytes).encodeToString(encoded)
+	return "-----BEGIN PUBLIC KEY-----\n${body}\n-----END PUBLIC KEY-----\n"
 }
