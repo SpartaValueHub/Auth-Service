@@ -3,9 +3,11 @@ package com.sparta.auth_service.adaptor.out.mysql;
 import com.sparta.auth_service.adaptor.out.mysql.entity.AuthEntity;
 import com.sparta.auth_service.adaptor.out.mysql.mapper.AuthEntityMapper;
 import com.sparta.auth_service.adaptor.out.mysql.repository.AuthJpaRepository;
+import com.sparta.auth_service.application.exception.DuplicateResourceException;
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
 import com.sparta.auth_service.domain.model.AuthDomain;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -34,11 +36,6 @@ public class AuthRepositoryAdapter implements AuthRepositoryPort {
     }
 
     @Override
-    public boolean existsByIdentityKey(String identityKey) {
-        return authJpaRepository.existsByIdentityKey(identityKey);
-    }
-
-    @Override
     public Optional<AuthDomain> findByLoginId(String loginId) {
         return authJpaRepository.findByLoginId(loginId)
                 .map(authEntityMapper::toDomain);
@@ -52,14 +49,31 @@ public class AuthRepositoryAdapter implements AuthRepositoryPort {
 
     @Override
     public AuthDomain save(AuthDomain authDomain) {
-        // 로그인 실패·잠금 갱신 등 기존 authUuid 행 update / 신규 insert
-        AuthEntity entity = authJpaRepository.findByAuthUuid(authDomain.getAuthUuid())
-                .map(existing -> {
-                    authEntityMapper.updateEntity(existing, authDomain);
-                    return existing;
-                })
-                .orElseGet(() -> authEntityMapper.toEntity(authDomain));
-        AuthEntity saved = authJpaRepository.save(entity);
-        return authEntityMapper.toDomain(saved);
+        try {
+            AuthEntity entity = authJpaRepository.findByAuthUuid(authDomain.getAuthUuid())
+                    .map(existing -> {
+                        authEntityMapper.updateEntity(existing, authDomain);
+                        return existing;
+                    })
+                    .orElseGet(() -> authEntityMapper.toEntity(authDomain));
+            AuthEntity saved = authJpaRepository.saveAndFlush(entity);
+            return authEntityMapper.toDomain(saved);
+        } catch (DataIntegrityViolationException ex) {
+            throw mapIntegrityViolation(ex);
+        }
+    }
+
+    private RuntimeException mapIntegrityViolation(DataIntegrityViolationException ex) {
+        if (AuthDataIntegrityViolationMapper.isNonDuplicateIntegrityViolation(ex)) {
+            throw ex;
+        }
+        Optional<DuplicateResourceException> mapped = AuthDataIntegrityViolationMapper.mapDuplicate(ex);
+        if (mapped.isPresent()) {
+            return mapped.get();
+        }
+        if (AuthDataIntegrityViolationMapper.isDuplicateEntryViolation(ex)) {
+            return new DuplicateResourceException("AUTH_DUPLICATE", "이미 사용 중인 정보입니다.");
+        }
+        throw ex;
     }
 }

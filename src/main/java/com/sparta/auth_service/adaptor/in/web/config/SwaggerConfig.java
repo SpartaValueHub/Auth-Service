@@ -4,9 +4,11 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /** 직접 접근 시 Swagger — 운영·FE 연동은 Gateway(/auth-service) 경유 권장 */
 @Configuration
+@Profile("!prod")
 public class SwaggerConfig {
 
     @Bean

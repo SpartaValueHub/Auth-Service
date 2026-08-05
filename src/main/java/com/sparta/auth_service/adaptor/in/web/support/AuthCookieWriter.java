@@ -21,6 +21,7 @@ public class AuthCookieWriter {
         return buildCookie(
                 cookieProperties.getAccessName(),
                 accessToken,
+                cookieProperties.getPath(),
                 Duration.ofMinutes(jwtProperties.getAccessTokenMinutes())
         );
     }
@@ -29,23 +30,29 @@ public class AuthCookieWriter {
         return buildCookie(
                 cookieProperties.getRefreshName(),
                 refreshToken,
+                cookieProperties.getRefreshPath(),
                 Duration.ofDays(jwtProperties.getRefreshTokenDays())
         );
     }
 
     public ResponseCookie clearAccessTokenCookie() {
-        return buildCookie(cookieProperties.getAccessName(), "", Duration.ZERO);
+        return buildCookie(cookieProperties.getAccessName(), "", cookieProperties.getPath(), Duration.ZERO);
     }
 
     public ResponseCookie clearRefreshTokenCookie() {
-        return buildCookie(cookieProperties.getRefreshName(), "", Duration.ZERO);
+        return buildCookie(
+                cookieProperties.getRefreshName(),
+                "",
+                cookieProperties.getRefreshPath(),
+                Duration.ZERO
+        );
     }
 
-    private ResponseCookie buildCookie(String name, String value, Duration maxAge) {
+    private ResponseCookie buildCookie(String name, String value, String path, Duration maxAge) {
         ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(cookieProperties.isSecure())
-                .path(cookieProperties.getPath())
+                .path(path)
                 .maxAge(maxAge);
 
         if (StringUtils.hasText(cookieProperties.getDomain())) {

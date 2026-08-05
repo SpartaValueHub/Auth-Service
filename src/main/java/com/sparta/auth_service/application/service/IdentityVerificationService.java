@@ -5,17 +5,21 @@ import com.sparta.auth_service.application.exception.IdentityVerificationNotFoun
 import com.sparta.auth_service.application.port.in.IdentityVerificationUseCase;
 import com.sparta.auth_service.application.port.in.dto.IdentityVerificationConfirmRequestDto;
 import com.sparta.auth_service.application.port.in.dto.IdentityVerificationResultDto;
+import com.sparta.auth_service.application.port.in.dto.IdentityVerificationStatusResultDto;
 import com.sparta.auth_service.application.port.out.FetchIdentityVerificationPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
+import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
+import com.sparta.auth_service.domain.enums.VerificationMethod;
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 /**
- * 본인인증 이력(상태·purpose·requestToken)만 DB에 저장.
- * CI·PII는 PortOne 조회·API 응답 prefill 용으로만 사용하고 영구 저장하지 않음.
+ * 본인인증 이력 저장 — CI는 identity_verifications.ci_hash(HMAC)만 저장.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
 
     private final FetchIdentityVerificationPort fetchIdentityVerificationPort;
     private final IdentityVerificationRepositoryPort identityVerificationRepositoryPort;
+    private final IdentityKeyHashPort identityKeyHashPort;
 
     @Override
     @Transactional
@@ -47,35 +52,23 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
         }
 
         if (domain.isSuccessful()) {
-            // 이미 SUCCESS면 PortOne 재조회 없이 이력·prefill만 반환 (멱등)
-            return toResultDto(domain, external);
+            return toStatusDto(domain);
         }
 
         IdentityVerificationDomain updated = applyExternalStatus(domain, external);
         IdentityVerificationDomain saved = identityVerificationRepositoryPort.save(updated);
-        return toResultDto(saved, external);
+        return toConfirmDto(saved, external);
     }
 
     @Override
-    public IdentityVerificationResultDto getStatus(String requestToken) {
-        if (requestToken == null || requestToken.isBlank()) {
-            throw new IllegalArgumentException("requestToken은 필수입니다.");
-        }
-
-        String trimmedToken = requestToken.trim();
-        IdentityVerificationDomain domain = identityVerificationRepositoryPort.findByRequestToken(trimmedToken)
+    public IdentityVerificationStatusResultDto getStatus(String requestToken) {
+        IdentityVerificationDomain domain = identityVerificationRepositoryPort.findByRequestToken(requestToken.trim())
                 .orElseThrow(() -> new IdentityVerificationNotFoundException("본인인증 내역을 찾을 수 없습니다."));
 
-        if (!domain.isSuccessful()) {
-            // 미완료 상태 — DB 이력만 반환 (prefill 없음)
-            return toResultDto(domain, null);
-        }
-
-        // SUCCESS — PortOne에서 prefill용 고객정보 재조회 (DB 미저장)
-        ExternalIdentityVerificationDto external = fetchIdentityVerificationPort.fetchByRequestToken(trimmedToken)
-                .orElseThrow(() -> new IdentityVerificationNotFoundException("본인인증 내역을 찾을 수 없습니다."));
-
-        return toResultDto(domain, external);
+        return IdentityVerificationStatusResultDto.builder()
+                .purpose(domain.getPurpose())
+                .status(domain.getVerificationStatus())
+                .build();
     }
 
     private IdentityVerificationDomain applyExternalStatus(
@@ -85,7 +78,8 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
         return switch (external.getPortOneStatus()) {
             case "VERIFIED" -> verifySuccess(domain, external);
             case "FAILED" -> domain.markFailed();
-            case "READY" -> domain.markRequested();
+            // READY: PortOne 진행 중 — REQUESTED 유지. 재인증은 새 requestToken으로 createRequested.
+            case "READY" -> domain;
             default -> domain.markFailed();
         };
     }
@@ -95,7 +89,16 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
             ExternalIdentityVerificationDto external
     ) {
         validateVerifiedCustomer(external);
-        return domain.markSuccess();
+        String ciHash = identityKeyHashPort.hashForLookup(external.getIdentityKey());
+        VerificationMethod method = resolveVerificationMethod(external);
+        return domain.markVerified(method, ciHash, Instant.now());
+    }
+
+    private VerificationMethod resolveVerificationMethod(ExternalIdentityVerificationDto external) {
+        if (external.getVerificationMethod() != null) {
+            return external.getVerificationMethod();
+        }
+        return VerificationMethod.PASS;
     }
 
     private void validateVerifiedCustomer(ExternalIdentityVerificationDto external) {
@@ -110,19 +113,31 @@ public class IdentityVerificationService implements IdentityVerificationUseCase 
         }
     }
 
-    private IdentityVerificationResultDto toResultDto(
-            IdentityVerificationDomain domain,
-            ExternalIdentityVerificationDto external
-    ) {
-        // memberName·phone·birthday는 응답 prefill 전용 — Entity/Domain에 저장하지 않음
+    /** confirm idempotent — 이미 SUCCESS면 PII·PortOne 재조회 없이 status만 반환 */
+    private IdentityVerificationResultDto toStatusDto(IdentityVerificationDomain domain) {
         return IdentityVerificationResultDto.builder()
                 .requestToken(domain.getRequestToken())
                 .purpose(domain.getPurpose())
-                .status(domain.getStatus())
-                .memberName(external != null ? external.getMemberName() : null)
-                .phoneNumber(external != null ? external.getPhoneNumber() : null)
-                .birthdayDate(external != null ? external.getBirthdayDate() : null)
-                .gender(external != null ? external.getGender() : null)
+                .status(domain.getVerificationStatus())
                 .build();
+    }
+
+    /** confirm — 가입 prefill용 최소 PII만 포함 */
+    private IdentityVerificationResultDto toConfirmDto(
+            IdentityVerificationDomain domain,
+            ExternalIdentityVerificationDto external
+    ) {
+        IdentityVerificationResultDto.IdentityVerificationResultDtoBuilder builder = IdentityVerificationResultDto.builder()
+                .requestToken(domain.getRequestToken())
+                .purpose(domain.getPurpose())
+                .status(domain.getVerificationStatus());
+
+        if (domain.isSuccessful() && external != null) {
+            builder.memberName(external.getMemberName())
+                    .phoneNumber(external.getPhoneNumber())
+                    .gender(external.getGender());
+        }
+
+        return builder.build();
     }
 }

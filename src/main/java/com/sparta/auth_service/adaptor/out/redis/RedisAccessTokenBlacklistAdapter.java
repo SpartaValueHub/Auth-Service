@@ -9,7 +9,9 @@ import java.time.Duration;
 
 /**
  * 로그아웃된 Access Token jti 블랙리스트 — TTL은 토큰 잔여 만료와 동일.
- * Gateway blacklist 연동은 추후 Edge Filter에서 isBlacklisted 호출 예정.
+ * Gateway blacklist 연동은 Edge Filter에서 isBlacklisted 호출.
+ * <p>
+ * Redis 장애 정책: fail-closed. missing key → false.
  */
 @Component
 @RequiredArgsConstructor
@@ -25,16 +27,20 @@ public class RedisAccessTokenBlacklistAdapter implements AccessTokenBlacklistPor
         if (ttlSeconds <= 0) {
             return;
         }
-        stringRedisTemplate.opsForValue().set(
-                KEY_PREFIX + tokenId,
-                "1",
-                Duration.ofSeconds(ttlSeconds)
+        RedisSecurityStoreSupport.run(() ->
+                stringRedisTemplate.opsForValue().set(
+                        KEY_PREFIX + tokenId,
+                        "1",
+                        Duration.ofSeconds(ttlSeconds)
+                )
         );
     }
 
     @Override
     public boolean isBlacklisted(String tokenId) {
-        Boolean exists = stringRedisTemplate.hasKey(KEY_PREFIX + tokenId);
+        Boolean exists = RedisSecurityStoreSupport.execute(() ->
+                stringRedisTemplate.hasKey(KEY_PREFIX + tokenId)
+        );
         return Boolean.TRUE.equals(exists);
     }
 }

@@ -1,17 +1,27 @@
+server:
+  # native: Tomcat RemoteIpValve — internal-proxies(게이트웨이 등)에서 온 X-Forwarded-For만 신뢰.
+  # framework는 직접 접속 시 클라이언트 X-Forwarded-For spoofing으로 rate limit 우회 가능.
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      internal-proxies: ${AUTH_TRUSTED_PROXY_PATTERNS:127\\.0\\.0\\.1|10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|172\\.(1[6-9]|2\\d|3[0-1])\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3}}
+
 spring:
   application:
     name: auth-service
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
   jpa:
+    open-in-view: false
+    show-sql: false
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         dialect: org.hibernate.dialect.MySQLDialect
-    open-in-view: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -43,10 +53,41 @@ auth:
     access-name: ${AUTH_COOKIE_ACCESS_NAME:vh_access_token}
     refresh-name: ${AUTH_COOKIE_REFRESH_NAME:vh_refresh_token}
     path: ${AUTH_COOKIE_PATH:/}
+    refresh-path: ${AUTH_COOKIE_REFRESH_PATH:/}
     domain: ${AUTH_COOKIE_DOMAIN:}
     secure: ${AUTH_COOKIE_SECURE:false}
     same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+  login-attempt:
+    captcha-threshold: ${AUTH_LOGIN_CAPTCHA_THRESHOLD:5}
+    lock-threshold: ${AUTH_LOGIN_LOCK_THRESHOLD:6}
+    lock-duration-minutes: ${AUTH_LOGIN_LOCK_MINUTES:1}
+    fail-count-window-minutes: ${AUTH_LOGIN_FAIL_WINDOW_MINUTES:10}
+  login-rate-limit:
+    enabled: ${AUTH_LOGIN_RATE_LIMIT_ENABLED:true}
+    max-attempts: ${AUTH_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:20}
+    window-seconds: ${AUTH_LOGIN_RATE_LIMIT_WINDOW_SECONDS:60}
+    block-seconds: ${AUTH_LOGIN_RATE_LIMIT_BLOCK_SECONDS:60}
+  dependency-failure:
+    retry-after-seconds: ${AUTH_DEPENDENCY_RETRY_AFTER_SECONDS:5}
+  origin:
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+    require-origin: ${AUTH_REQUIRE_ORIGIN:false}
 
 portone:
   api-secret: ${PORTONE_API_SECRET}
   base-url: ${PORTONE_BASE_URL:https://api.portone.io}
+  connect-timeout-millis: ${PORTONE_CONNECT_TIMEOUT_MILLIS:2000}
+  read-timeout-millis: ${PORTONE_READ_TIMEOUT_MILLIS:5000}
+
+security:
+  ci:
+    hash-key: ${CI_HASH_KEY:}
+
+captcha:
+  enabled: ${CAPTCHA_ENABLED:true}
+  connect-timeout-millis: ${AUTH_CAPTCHA_CONNECT_TIMEOUT_MILLIS:2000}
+  read-timeout-millis: ${AUTH_CAPTCHA_READ_TIMEOUT_MILLIS:3000}
+  recaptcha:
+    secret-key: ${RECAPTCHA_SECRET_KEY:}
+    allowed-hostnames: ${AUTH_CAPTCHA_ALLOWED_HOSTNAMES:localhost,127.0.0.1}
+    challenge-max-age-seconds: ${AUTH_CAPTCHA_CHALLENGE_MAX_AGE_SECONDS:120}

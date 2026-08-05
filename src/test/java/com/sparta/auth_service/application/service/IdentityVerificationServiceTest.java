@@ -4,6 +4,7 @@ import com.sparta.auth_service.application.exception.IdentityVerificationFailedE
 import com.sparta.auth_service.application.exception.IdentityVerificationNotFoundException;
 import com.sparta.auth_service.application.port.in.dto.IdentityVerificationConfirmRequestDto;
 import com.sparta.auth_service.application.port.out.FetchIdentityVerificationPort;
+import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.domain.enums.Gender;
@@ -35,6 +36,9 @@ class IdentityVerificationServiceTest {
     @Mock
     private IdentityVerificationRepositoryPort identityVerificationRepositoryPort;
 
+    @Mock
+    private IdentityKeyHashPort identityKeyHashPort;
+
     @InjectMocks
     private IdentityVerificationService identityVerificationService;
 
@@ -44,6 +48,7 @@ class IdentityVerificationServiceTest {
 
         when(fetchIdentityVerificationPort.fetchByRequestToken("verify-001")).thenReturn(Optional.of(external));
         when(identityVerificationRepositoryPort.findByRequestToken("verify-001")).thenReturn(Optional.empty());
+        when(identityKeyHashPort.hashForLookup("ci-value-001")).thenReturn("ci-hash-001");
         when(identityVerificationRepositoryPort.save(any(IdentityVerificationDomain.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -52,15 +57,18 @@ class IdentityVerificationServiceTest {
         assertThat(result.getStatus()).isEqualTo(VerificationStatus.SUCCESS);
         assertThat(result.getMemberName()).isEqualTo("홍길동");
         assertThat(result.getPhoneNumber()).isEqualTo("01012345678");
+        assertThat(result.getBirthdayDate()).isNull();
+        assertThat(result.getGender()).isEqualTo(Gender.MALE);
         verify(identityVerificationRepositoryPort).save(any(IdentityVerificationDomain.class));
     }
 
     @Test
-    void confirm_doesNotPersistVerifiedCustomerFields() {
+    void confirm_persistsCiHashOnly() {
         ExternalIdentityVerificationDto external = verifiedExternal("verify-001");
 
         when(fetchIdentityVerificationPort.fetchByRequestToken("verify-001")).thenReturn(Optional.of(external));
         when(identityVerificationRepositoryPort.findByRequestToken("verify-001")).thenReturn(Optional.empty());
+        when(identityKeyHashPort.hashForLookup("ci-value-001")).thenReturn("ci-hash-001");
         when(identityVerificationRepositoryPort.save(any(IdentityVerificationDomain.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -68,8 +76,9 @@ class IdentityVerificationServiceTest {
 
         verify(identityVerificationRepositoryPort).save(
                 org.mockito.ArgumentMatchers.argThat(saved ->
-                        saved.getStatus() == VerificationStatus.SUCCESS
+                        saved.getVerificationStatus() == VerificationStatus.SUCCESS
                                 && saved.getRequestToken().equals("verify-001")
+                                && saved.getCiHash().equals("ci-hash-001")
                 )
         );
     }
@@ -99,21 +108,38 @@ class IdentityVerificationServiceTest {
     }
 
     @Test
-    void getStatus_returnsStoredStatusAndPrefillFromPortOneWhenSuccess() {
+    void getStatus_returnsPurposeAndStatusOnly() {
         IdentityVerificationDomain stored = IdentityVerificationDomain.createRequested(
                 "verify-003",
                 VerificationPurpose.SIGN_UP
-        ).markSuccess();
-        ExternalIdentityVerificationDto external = verifiedExternal("verify-003");
+        ).markVerified(
+                com.sparta.auth_service.domain.enums.VerificationMethod.PASS,
+                "ci-hash-003",
+                java.time.Instant.parse("2025-01-01T00:00:00Z")
+        );
 
         when(identityVerificationRepositoryPort.findByRequestToken("verify-003")).thenReturn(Optional.of(stored));
-        when(fetchIdentityVerificationPort.fetchByRequestToken("verify-003")).thenReturn(Optional.of(external));
 
         var result = identityVerificationService.getStatus("verify-003");
 
         assertThat(result.getStatus()).isEqualTo(VerificationStatus.SUCCESS);
-        assertThat(result.getRequestToken()).isEqualTo("verify-003");
-        assertThat(result.getMemberName()).isEqualTo("홍길동");
+        assertThat(result.getPurpose()).isEqualTo(VerificationPurpose.SIGN_UP);
+        verify(fetchIdentityVerificationPort, never()).fetchByRequestToken(any());
+    }
+
+    @Test
+    void getStatus_trimsRequestToken() {
+        IdentityVerificationDomain stored = IdentityVerificationDomain.createRequested(
+                "verify-003",
+                VerificationPurpose.SIGN_UP
+        );
+
+        when(identityVerificationRepositoryPort.findByRequestToken("verify-003")).thenReturn(Optional.of(stored));
+
+        identityVerificationService.getStatus("  verify-003  ");
+
+        verify(identityVerificationRepositoryPort).findByRequestToken("verify-003");
+        verify(fetchIdentityVerificationPort, never()).fetchByRequestToken(any());
     }
 
     @Test
@@ -128,7 +154,7 @@ class IdentityVerificationServiceTest {
         var result = identityVerificationService.getStatus("verify-004");
 
         assertThat(result.getStatus()).isEqualTo(VerificationStatus.REQUESTED);
-        assertThat(result.getMemberName()).isNull();
+        assertThat(result.getPurpose()).isEqualTo(VerificationPurpose.SIGN_UP);
         verify(fetchIdentityVerificationPort, never()).fetchByRequestToken(any());
     }
 

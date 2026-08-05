@@ -1,15 +1,11 @@
 package com.sparta.auth_service.adaptor.in.web.mapper;
 
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
-import com.sparta.auth_service.adaptor.in.web.vo.AuthLogoutRequestVo;
-import com.sparta.auth_service.adaptor.in.web.vo.AuthRefreshRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
-import com.sparta.auth_service.application.port.in.dto.AuthLogoutRequestDto;
-import com.sparta.auth_service.application.port.in.dto.AuthRefreshRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
@@ -39,10 +35,12 @@ public class AuthWebMapper {
                 .build();
     }
 
-    public AuthSignInRequestDto toDto(AuthSignInRequestVo vo) {
+    public AuthSignInRequestDto toDto(AuthSignInRequestVo vo, String clientIp) {
         return AuthSignInRequestDto.builder()
                 .loginId(vo.getLogInId())
                 .password(vo.getPassword())
+                .captchaToken(vo.getCaptchaToken())
+                .clientIp(clientIp)
                 .build();
     }
 
@@ -51,19 +49,6 @@ public class AuthWebMapper {
                 .memberUuid(dto.getAuthUuid())
                 .nickname(dto.getMemberName())
                 .role(dto.getRole())
-                .build();
-    }
-
-    public AuthRefreshRequestDto toDto(AuthRefreshRequestVo vo) {
-        return AuthRefreshRequestDto.builder()
-                .refreshToken(vo.getRefreshToken())
-                .build();
-    }
-
-    public AuthLogoutRequestDto toDto(AuthLogoutRequestVo vo) {
-        return AuthLogoutRequestDto.builder()
-                .accessToken(vo.getAccessToken())
-                .refreshToken(vo.getRefreshToken())
                 .build();
     }
 

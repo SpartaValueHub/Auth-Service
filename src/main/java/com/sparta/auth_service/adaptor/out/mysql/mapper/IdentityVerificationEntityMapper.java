@@ -4,32 +4,43 @@ import com.sparta.auth_service.adaptor.out.mysql.entity.IdentityVerificationEnti
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
 import org.springframework.stereotype.Component;
 
-/** requestToken은 생성 후 변경 없음 — status·memberUuid만 updateEntity로 갱신 */
+/** requestToken·verificationUuid는 생성 후 변경 없음 */
 @Component
 public class IdentityVerificationEntityMapper {
 
     public IdentityVerificationEntity toEntity(IdentityVerificationDomain domain) {
         return IdentityVerificationEntity.builder()
+                .verificationUuid(domain.getVerificationUuid())
                 .memberUuid(domain.getMemberUuid())
                 .purpose(domain.getPurpose())
                 .requestToken(domain.getRequestToken())
-                .status(domain.getStatus())
+                .verificationMethod(domain.getVerificationMethod())
+                .ciHash(domain.getCiHash())
+                .verificationStatus(domain.getVerificationStatus())
+                .verifiedAt(domain.getVerifiedAt())
                 .build();
     }
 
     public void updateEntity(IdentityVerificationEntity entity, IdentityVerificationDomain domain) {
         entity.setMemberUuid(domain.getMemberUuid());
         entity.setPurpose(domain.getPurpose());
-        entity.setStatus(domain.getStatus());
+        entity.setVerificationMethod(domain.getVerificationMethod());
+        entity.setCiHash(domain.getCiHash());
+        entity.setVerificationStatus(domain.getVerificationStatus());
+        entity.setVerifiedAt(domain.getVerifiedAt());
     }
 
     public IdentityVerificationDomain toDomain(IdentityVerificationEntity entity) {
         return IdentityVerificationDomain.reconstitute(
                 entity.getIdentityVerificationId(),
+                entity.getVerificationUuid(),
                 entity.getMemberUuid(),
                 entity.getPurpose(),
                 entity.getRequestToken(),
-                entity.getStatus(),
+                entity.getVerificationMethod(),
+                entity.getCiHash(),
+                entity.getVerificationStatus(),
+                entity.getVerifiedAt(),
                 entity.getCreatedAt()
         );
     }

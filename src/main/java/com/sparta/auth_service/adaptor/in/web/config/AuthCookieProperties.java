@@ -15,6 +15,8 @@ public class AuthCookieProperties {
     private String accessName = "vh_access_token";
     private String refreshName = "vh_refresh_token";
     private String path = "/";
+    /** refresh 쿠키 path — access와 동일하게 / 로 두어 Next BFF(/api/auth/*)에서 읽을 수 있게 함 */
+    private String refreshPath = "/";
     /** 비우면 host-only (localhost 등). prod에서는 .example.com 등 설정 */
     private String domain = "";
     private boolean secure = false;
