@@ -193,7 +193,7 @@ public class AuthDomain {
     public static void validatePlainPassword(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
             throw new IllegalArgumentException(
-                    "password는 8~20자이며 영문 대소문자, 숫자, 특수문자(!@#$%^&*()-+_=)를 각각 1자 이상 포함해야 합니다."
+                    "비밀번호는 8~20자, 영문 대문자·소문자·숫자·특수문자(!@#$%^&*()-+_=)를 각각 1자 이상 포함해야 합니다."
             );
         }
     }
