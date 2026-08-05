@@ -1,9 +1,8 @@
 package com.sparta.auth_service.adaptor.in.web;
 
 import com.sparta.auth_service.adaptor.in.web.mapper.AuthWebMapper;
+import com.sparta.auth_service.adaptor.in.web.support.AuthCookieWriter;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
-import com.sparta.auth_service.adaptor.in.web.vo.AuthLogoutRequestVo;
-import com.sparta.auth_service.adaptor.in.web.vo.AuthRefreshRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
@@ -19,7 +18,10 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 인증 Inbound Controller — VO↔UseCase 위임만, 비즈니스·트랜잭션은 Application.
- * JWT 검증·CORS는 Gateway Edge; auth-service API는 Gateway 경유 public.
+ * JWT는 HttpOnly Cookie로 발급·갱신·삭제. Gateway Edge에서 Cookie JWT 검증.
  */
 @Tag(name = "Auth", description = "인증 API — JWT 발급·계정. 닉네임/프로필은 member-service")
 @RequestMapping("/api/v1")
@@ -40,6 +42,7 @@ public class AuthController {
 
     private final AuthUseCase authUseCase;
     private final AuthWebMapper authWebMapper;
+    private final AuthCookieWriter authCookieWriter;
 
     @Operation(summary = "회원가입", description = "본인인증 SUCCESS 후 회원을 등록합니다.")
     @PostMapping("/auth/sign-up")
@@ -50,28 +53,42 @@ public class AuthController {
         return authWebMapper.toVo(resultDto);
     }
 
-    @Operation(summary = "로그인", description = "아이디/비밀번호로 로그인하고 JWT를 발급합니다.")
+    @Operation(summary = "로그인", description = "아이디/비밀번호로 로그인하고 JWT를 HttpOnly Cookie로 발급합니다.")
     @PostMapping("/auth/sign-in")
-    public AuthSignInResponseVo signIn(@RequestBody AuthSignInRequestVo authSignInRequestVo) {
+    public ResponseEntity<AuthSignInResponseVo> signIn(@RequestBody AuthSignInRequestVo authSignInRequestVo) {
         AuthSignInRequestDto requestDto = authWebMapper.toDto(authSignInRequestVo);
         AuthSignInResultDto resultDto = authUseCase.signIn(requestDto);
-        return authWebMapper.toVo(resultDto);
+        return tokenResponse(resultDto);
     }
 
-    @Operation(summary = "토큰 갱신", description = "Refresh Token으로 Access/Refresh Token을 재발급합니다.")
+    @Operation(summary = "토큰 갱신", description = "Refresh Token Cookie로 Access/Refresh Token을 재발급합니다.")
     @PostMapping("/auth/refresh")
-    public AuthSignInResponseVo refresh(@RequestBody AuthRefreshRequestVo requestVo) {
-        AuthRefreshRequestDto requestDto = authWebMapper.toDto(requestVo);
+    public ResponseEntity<AuthSignInResponseVo> refresh(
+            @CookieValue(name = "${auth.cookie.refresh-name:vh_refresh_token}", required = false) String refreshCookie
+    ) {
+        AuthRefreshRequestDto requestDto = AuthRefreshRequestDto.builder()
+                .refreshToken(refreshCookie)
+                .build();
         AuthSignInResultDto resultDto = authUseCase.refresh(requestDto);
-        return authWebMapper.toVo(resultDto);
+        return tokenResponse(resultDto);
     }
 
-    @Operation(summary = "로그아웃", description = "Refresh Token을 무효화하고 Access Token을 블랙리스트에 등록합니다.")
+    @Operation(summary = "로그아웃", description = "Refresh Token 무효화·Access Token 블랙리스트·Cookie 삭제")
     @PostMapping("/auth/logout")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(@RequestBody AuthLogoutRequestVo requestVo) {
-        AuthLogoutRequestDto requestDto = authWebMapper.toDto(requestVo);
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "${auth.cookie.access-name:vh_access_token}", required = false) String accessCookie,
+            @CookieValue(name = "${auth.cookie.refresh-name:vh_refresh_token}", required = false) String refreshCookie
+    ) {
+        AuthLogoutRequestDto requestDto = AuthLogoutRequestDto.builder()
+                .accessToken(accessCookie)
+                .refreshToken(refreshCookie)
+                .build();
         authUseCase.logout(requestDto);
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.clearAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.clearRefreshTokenCookie().toString())
+                .build();
     }
 
     @Operation(summary = "아이디 중복 확인")
@@ -86,5 +103,13 @@ public class AuthController {
     public AuthAvailabilityResponseVo checkEmail(@RequestParam String email) {
         AuthAvailabilityResultDto resultDto = authUseCase.checkEmailAvailability(email);
         return authWebMapper.toVo(resultDto);
-   }
+    }
+
+    private ResponseEntity<AuthSignInResponseVo> tokenResponse(AuthSignInResultDto resultDto) {
+        AuthSignInResponseVo body = authWebMapper.toVo(resultDto);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.accessTokenCookie(resultDto.getAccessToken()).toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.refreshTokenCookie(resultDto.getRefreshToken()).toString())
+                .body(body);
+    }
 }

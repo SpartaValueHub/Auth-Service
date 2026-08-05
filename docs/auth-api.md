@@ -81,14 +81,30 @@
 
 ### Response (200)
 
+**Body** (JWT는 응답 본문에 포함하지 않음):
+
 | 필드 | 타입 |
 |------|------|
-| accessToken | string | RS256 JWT, 15분, claims: sub(authUuid), tokenType=access |
-| refreshToken | string | RS256 JWT, 14일 |
-| authUuid | string |
-| logInId | string |
-| memberName | string |
-| email | string |
+| memberUuid | string |
+| nickname | string |
+| role | string |
+
+**Set-Cookie** (HttpOnly):
+
+| Cookie | 설명 |
+|--------|------|
+| `vh_access_token` (설정: `auth.cookie.access-name`) | Access JWT, Max-Age=access TTL |
+| `vh_refresh_token` (설정: `auth.cookie.refresh-name`) | Refresh JWT, Max-Age=refresh TTL |
+
+Cookie 속성: `HttpOnly`, `Path=/`, `SameSite=Lax`(기본), `Secure`(prod), `Domain`(선택)
+
+```json
+{
+  "memberUuid": "550e8400-e29b-41d4-a716-446655440000",
+  "nickname": "홍길동",
+  "role": "USER"
+}
+```
 
 ### Errors
 
@@ -105,16 +121,13 @@
 `POST /api/v1/auth/refresh`
 
 ### Auth
-불필요 (Refresh Token body)
+불필요 (Refresh Token HttpOnly Cookie)
 
-### Request (Body)
-
-| 필드 | 타입 | 필수 |
-|------|------|------|
-| refreshToken | string | O |
+### Request
+Body 없음. `vh_refresh_token` Cookie 필수.
 
 ### Response (200)
-로그인과 동일
+로그인과 동일 (body + Set-Cookie rotation)
 
 ### Errors
 
@@ -130,17 +143,15 @@
 `POST /api/v1/auth/logout`
 
 ### Auth
-Gateway JWT (Access Token Bearer)
+Gateway JWT — Access Token HttpOnly Cookie (`vh_access_token`)
 
-### Request (Body)
-
-| 필드 | 타입 | 필수 |
-|------|------|------|
-| accessToken | string | O |
-| refreshToken | string | O |
+### Request
+Body 없음. `vh_access_token`·`vh_refresh_token` Cookie에서 토큰 읽음.
 
 ### Response
-`204 No Content`
+`204 No Content` + 만료 Cookie (`Max-Age=0`) 2개
+
+Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료)
 
 ---
 
