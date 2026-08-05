@@ -4,6 +4,7 @@ import com.sparta.auth_service.adaptor.out.mysql.entity.IdentityVerificationEnti
 import com.sparta.auth_service.adaptor.out.mysql.mapper.IdentityVerificationEntityMapper;
 import com.sparta.auth_service.adaptor.out.mysql.repository.IdentityVerificationRepository;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
+import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -34,5 +35,13 @@ public class IdentityVerificationRepositoryAdapter implements IdentityVerificati
     public Optional<IdentityVerificationDomain> findByRequestToken(String requestToken) {
         return identityVerificationRepository.findByRequestToken(requestToken)
                 .map(identityVerificationEntityMapper::toDomain);
+    }
+
+    @Override
+    public boolean existsSignUpLinkedByCiHash(String ciHash) {
+        return identityVerificationRepository.existsByCiHashAndPurposeAndMemberUuidIsNotNull(
+                ciHash,
+                VerificationPurpose.SIGN_UP
+        );
     }
 }

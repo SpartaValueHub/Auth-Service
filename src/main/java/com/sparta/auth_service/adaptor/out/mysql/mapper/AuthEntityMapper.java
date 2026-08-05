@@ -17,11 +17,9 @@ public class AuthEntityMapper {
                 .phoneNumber(domain.getPhoneNumber())
                 .gender(domain.getGender())
                 .email(domain.getEmail())
-                .identityKey(domain.getIdentityKey())
                 .passwordHash(domain.getPasswordHash())
                 .passwordChangedAt(domain.getPasswordChangedAt())
-                .loginFailCount(domain.getLoginFailCount())
-                .lockedUntil(domain.getLockedUntil())
+                .memberStatus(domain.getMemberStatus())
                 .build();
     }
 
@@ -31,11 +29,9 @@ public class AuthEntityMapper {
         entity.setPhoneNumber(domain.getPhoneNumber());
         entity.setGender(domain.getGender());
         entity.setEmail(domain.getEmail());
-        entity.setIdentityKey(domain.getIdentityKey());
         entity.setPasswordHash(domain.getPasswordHash());
         entity.setPasswordChangedAt(domain.getPasswordChangedAt());
-        entity.setLoginFailCount(domain.getLoginFailCount());
-        entity.setLockedUntil(domain.getLockedUntil());
+        entity.setMemberStatus(domain.getMemberStatus());
     }
 
     public AuthDomain toDomain(AuthEntity entity) {
@@ -47,11 +43,9 @@ public class AuthEntityMapper {
                 entity.getPhoneNumber(),
                 entity.getGender(),
                 entity.getEmail(),
-                entity.getIdentityKey(),
                 entity.getPasswordHash(),
                 entity.getPasswordChangedAt(),
-                entity.getLoginFailCount(),
-                entity.getLockedUntil(),
+                entity.getMemberStatus(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );

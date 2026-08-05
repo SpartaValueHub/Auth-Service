@@ -14,8 +14,6 @@ public interface AuthJpaRepository extends JpaRepository<AuthEntity, Long> {
 
     boolean existsByPhoneNumber(String phoneNumber);
 
-    boolean existsByIdentityKey(String identityKey);
-
     Optional<AuthEntity> findByLoginId(String loginId);
 
     Optional<AuthEntity> findByAuthUuid(String authUuid);

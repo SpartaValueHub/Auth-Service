@@ -2,6 +2,7 @@ package com.sparta.auth_service.adaptor.in.web;
 
 import com.sparta.auth_service.adaptor.in.web.mapper.AuthWebMapper;
 import com.sparta.auth_service.adaptor.in.web.support.AuthCookieWriter;
+import com.sparta.auth_service.adaptor.in.web.support.ClientIpResolver;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
@@ -30,6 +31,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /**
  * 인증 Inbound Controller — VO↔UseCase 위임만, 비즈니스·트랜잭션은 Application.
  * JWT는 HttpOnly Cookie로 발급·갱신·삭제. Gateway Edge에서 Cookie JWT 검증.
@@ -43,6 +46,7 @@ public class AuthController {
     private final AuthUseCase authUseCase;
     private final AuthWebMapper authWebMapper;
     private final AuthCookieWriter authCookieWriter;
+    private final ClientIpResolver clientIpResolver;
 
     @Operation(summary = "회원가입", description = "본인인증 SUCCESS 후 회원을 등록합니다.")
     @PostMapping("/auth/sign-up")
@@ -55,8 +59,12 @@ public class AuthController {
 
     @Operation(summary = "로그인", description = "아이디/비밀번호로 로그인하고 JWT를 HttpOnly Cookie로 발급합니다.")
     @PostMapping("/auth/sign-in")
-    public ResponseEntity<AuthSignInResponseVo> signIn(@RequestBody AuthSignInRequestVo authSignInRequestVo) {
-        AuthSignInRequestDto requestDto = authWebMapper.toDto(authSignInRequestVo);
+    public ResponseEntity<AuthSignInResponseVo> signIn(
+            @RequestBody AuthSignInRequestVo authSignInRequestVo,
+            HttpServletRequest httpServletRequest
+    ) {
+        String clientIp = clientIpResolver.resolve(httpServletRequest);
+        AuthSignInRequestDto requestDto = authWebMapper.toDto(authSignInRequestVo, clientIp);
         AuthSignInResultDto resultDto = authUseCase.signIn(requestDto);
         return tokenResponse(resultDto);
     }

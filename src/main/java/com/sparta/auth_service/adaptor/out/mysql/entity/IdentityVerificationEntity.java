@@ -1,5 +1,6 @@
 package com.sparta.auth_service.adaptor.out.mysql.entity;
 
+import com.sparta.auth_service.domain.enums.VerificationMethod;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.enums.VerificationStatus;
 import jakarta.persistence.Column;
@@ -21,7 +22,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
 
-/** 본인인증 이력 — PII 컬럼 없음, status·purpose·requestToken·member_uuid(가입 후)만 */
+/** 본인인증 이력 — 원본 CI는 저장하지 않고 HMAC-SHA256 처리한 ci_hash만 저장 */
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,7 +36,10 @@ public class IdentityVerificationEntity {
     @Column(name = "identity_verification_id")
     private Long identityVerificationId;
 
-    /** 가입 완료 후 authUuid 연결 — null이면 sign-up 재사용 가능(SUCCESS 시) */
+    @Column(name = "verification_uuid", nullable = false, unique = true, length = 36)
+    private String verificationUuid;
+
+    /** 인증 사용 완료 후 memberUuid 연결 — null이면 아직 회원과 연결되지 않은 인증 */
     @Column(name = "member_uuid", length = 36)
     private String memberUuid;
 
@@ -47,8 +51,18 @@ public class IdentityVerificationEntity {
     private String requestToken;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private VerificationStatus status;
+    @Column(name = "verification_method", length = 30)
+    private VerificationMethod verificationMethod;
+
+    @Column(name = "ci_hash", length = 64)
+    private String ciHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", nullable = false, length = 20)
+    private VerificationStatus verificationStatus;
+
+    @Column(name = "verified_at")
+    private Instant verifiedAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -56,14 +70,22 @@ public class IdentityVerificationEntity {
 
     @Builder
     private IdentityVerificationEntity(
+            String verificationUuid,
             String memberUuid,
             VerificationPurpose purpose,
             String requestToken,
-            VerificationStatus status
+            VerificationMethod verificationMethod,
+            String ciHash,
+            VerificationStatus verificationStatus,
+            Instant verifiedAt
     ) {
+        this.verificationUuid = verificationUuid;
         this.memberUuid = memberUuid;
         this.purpose = purpose;
         this.requestToken = requestToken;
-        this.status = status;
+        this.verificationMethod = verificationMethod;
+        this.ciHash = ciHash;
+        this.verificationStatus = verificationStatus;
+        this.verifiedAt = verifiedAt;
     }
 }

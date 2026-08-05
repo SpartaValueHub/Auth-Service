@@ -1,6 +1,7 @@
 package com.sparta.auth_service.adaptor.out.mysql.entity;
 
 import com.sparta.auth_service.domain.enums.Gender;
+import com.sparta.auth_service.domain.enums.MemberStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -10,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,13 +24,21 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.Instant;
 import java.time.LocalDate;
 
-/** auth 테이블 — auth_id(PK) 내부용, 외부 식별자는 auth_uuid */
+/** auth 테이블 — auth_id(PK) 내부용, 외부 식별자는 auth_uuid. CI는 identity_verifications에만 저장 */
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 @Entity
-@Table(name = "auth")
+@Table(
+        name = "auth",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_auth_auth_uuid", columnNames = "auth_uuid"),
+                @UniqueConstraint(name = "uk_auth_login_id", columnNames = "login_id"),
+                @UniqueConstraint(name = "uk_auth_email", columnNames = "email"),
+                @UniqueConstraint(name = "uk_auth_phone_number", columnNames = "phone_number")
+        }
+)
 public class AuthEntity {
 
     @Id
@@ -36,10 +46,10 @@ public class AuthEntity {
     @Column(name = "auth_id")
     private Long authId;
 
-    @Column(name = "auth_uuid", nullable = false, unique = true, length = 36)
+    @Column(name = "auth_uuid", nullable = false, length = 36)
     private String authUuid;
 
-    @Column(name = "login_id", nullable = false, unique = true, length = 20)
+    @Column(name = "login_id", nullable = false, length = 20)
     private String loginId;
 
     @Column(name = "member_name", nullable = false, length = 50)
@@ -58,23 +68,15 @@ public class AuthEntity {
     @Column(name = "email", nullable = false, length = 255)
     private String email;
 
-    /** PortOne CI — 동일인 중복 가입 방지, unique */
-    @Column(name = "identity_key", nullable = false, unique = true, length = 100)
-    private String identityKey;
-
     @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
     @Column(name = "password_changed_at", nullable = false)
     private Instant passwordChangedAt;
 
-    /** AuthDomain.recordLoginFailure와 동기 — 5회 도달 시 lockedUntil 설정 */
-    @Column(name = "login_fail_count", nullable = false)
-    private int loginFailCount;
-
-    /** null이면 미잠금; Domain.isLocked(now)와 동일 의미 */
-    @Column(name = "locked_until")
-    private Instant lockedUntil;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "member_status", nullable = false, length = 20)
+    private MemberStatus memberStatus;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -93,11 +95,9 @@ public class AuthEntity {
             String phoneNumber,
             Gender gender,
             String email,
-            String identityKey,
             String passwordHash,
             Instant passwordChangedAt,
-            int loginFailCount,
-            Instant lockedUntil
+            MemberStatus memberStatus
     ) {
         this.authUuid = authUuid;
         this.loginId = loginId;
@@ -106,10 +106,8 @@ public class AuthEntity {
         this.phoneNumber = phoneNumber;
         this.gender = gender;
         this.email = email;
-        this.identityKey = identityKey;
         this.passwordHash = passwordHash;
         this.passwordChangedAt = passwordChangedAt;
-        this.loginFailCount = loginFailCount;
-        this.lockedUntil = lockedUntil;
+        this.memberStatus = memberStatus;
     }
 }

@@ -1,5 +1,7 @@
 package com.sparta.auth_service.domain.model;
 
+import com.sparta.auth_service.domain.enums.Gender;
+import com.sparta.auth_service.domain.enums.MemberStatus;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,11 +13,9 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import com.sparta.auth_service.domain.enums.Gender;
-
 /**
- * 인증 계정 도메인 — 로그인·CI·잠금 정책.
- * authUuid가 외부 식별자(PK 아님). 닉네임은 member-service 소유.
+ * 인증 계정 도메인 — 로그인·회원 상태 정책.
+ * authUuid가 외부 식별자(PK 아님). CI는 identity_verifications 이력에만 저장.
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -29,10 +29,6 @@ public class AuthDomain {
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()\\-+_=])[A-Za-z\\d!@#$%^&*()\\-+_=]{8,20}$"
     );
 
-    private static final int MAX_LOGIN_FAIL_COUNT = 5;
-    /** 5회 연속 실패 시 계정 잠금 시간(분) */
-    private static final long LOCK_MINUTES = 10;
-
     /** 외부 식별자 — JWT·API 응답에 사용, DB PK(auth_id)와 분리 */
     private String authUuid;
     private String loginId;
@@ -41,12 +37,9 @@ public class AuthDomain {
     private String phoneNumber;
     private Gender gender;
     private String email;
-    /** PortOne CI — 동일인 중복 가입 방지 */
-    private String identityKey;
     private String passwordHash;
     private Instant passwordChangedAt;
-    private int loginFailCount;
-    private Instant lockedUntil;
+    private MemberStatus memberStatus;
     private Instant createdAt;
     private Instant updatedAt;
 
@@ -57,8 +50,7 @@ public class AuthDomain {
             String memberName,
             LocalDate birthdayDate,
             String phoneNumber,
-            Gender gender,
-            String identityKey
+            Gender gender
     ) {
         validateLoginId(loginId);
         validatePasswordHash(passwordHash);
@@ -67,23 +59,44 @@ public class AuthDomain {
         validateBirthdayDate(birthdayDate);
         validatePhoneNumber(phoneNumber);
         validateGender(gender);
-        validateIdentityKey(identityKey);
 
         Instant now = Instant.now();
         return AuthDomain.builder()
                 .authUuid(UUID.randomUUID().toString())
-                .loginId(loginId.trim())
+                .loginId(normalizeLoginIdForLookup(loginId))
                 .memberName(trimmedMemberName)
                 .birthdayDate(birthdayDate)
-                .phoneNumber(phoneNumber.trim())
+                .phoneNumber(normalizePhoneNumberForLookup(phoneNumber))
                 .gender(gender)
                 .email(normalizedEmail)
-                .identityKey(identityKey.trim())
                 .passwordHash(passwordHash)
                 .passwordChangedAt(now)
-                .loginFailCount(0)
-                .lockedUntil(null)
+                .memberStatus(MemberStatus.ACTIVE)
                 .build();
+    }
+
+    /** existsBy·availability 조회용 — createSignUp 저장값과 동일한 loginId 정규화(trim) */
+    public static String normalizeLoginIdForLookup(String loginId) {
+        if (loginId == null || loginId.isBlank()) {
+            throw new IllegalArgumentException("loginId는 필수입니다.");
+        }
+        return loginId.trim();
+    }
+
+    /** existsBy·availability 조회용 — createSignUp 저장값과 동일한 email 정규화(trim + Locale.ROOT lowercase) */
+    public static String normalizeEmailForLookup(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("email은 필수입니다.");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    /** existsBy·availability 조회용 — createSignUp 저장값과 동일한 phoneNumber 정규화(trim) */
+    public static String normalizePhoneNumberForLookup(String phoneNumber) {
+        if (phoneNumber == null) {
+            throw new IllegalArgumentException("phoneNumber는 필수입니다.");
+        }
+        return phoneNumber.trim();
     }
 
     public static AuthDomain reconstitute(
@@ -94,11 +107,9 @@ public class AuthDomain {
             String phoneNumber,
             Gender gender,
             String email,
-            String identityKey,
             String passwordHash,
             Instant passwordChangedAt,
-            int loginFailCount,
-            Instant lockedUntil,
+            MemberStatus memberStatus,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -110,71 +121,25 @@ public class AuthDomain {
                 .phoneNumber(phoneNumber)
                 .gender(gender)
                 .email(email)
-                .identityKey(identityKey)
                 .passwordHash(passwordHash)
                 .passwordChangedAt(passwordChangedAt)
-                .loginFailCount(loginFailCount)
-                .lockedUntil(lockedUntil)
+                .memberStatus(memberStatus)
                 .createdAt(createdAt)
                 .updatedAt(updatedAt)
                 .build();
     }
 
-    public AuthDomain changePasswordHash(String passwordHash) {
-        validatePasswordHash(passwordHash);
-        return AuthDomain.builder()
-                .authUuid(this.authUuid)
-                .loginId(this.loginId)
-                .memberName(this.memberName)
-                .birthdayDate(this.birthdayDate)
-                .phoneNumber(this.phoneNumber)
-                .gender(this.gender)
-                .email(this.email)
-                .identityKey(this.identityKey)
-                .passwordHash(passwordHash)
-                .passwordChangedAt(Instant.now())
-                .loginFailCount(this.loginFailCount)
-                .lockedUntil(this.lockedUntil)
-                .createdAt(this.createdAt)
-                .updatedAt(this.updatedAt)
-                .build();
+    public boolean isActive() {
+        return memberStatus == MemberStatus.ACTIVE;
     }
 
-    public boolean isLocked(Instant now) {
-        return lockedUntil != null && lockedUntil.isAfter(now);
-    }
-
-    public AuthDomain recordLoginFailure(Instant now) {
-        int nextFailCount = this.loginFailCount + 1;
-        // MAX_LOGIN_FAIL_COUNT 도달 시 lockedUntil 설정 — Domain에서 상태 전이만 담당
-        Instant nextLockedUntil = nextFailCount >= MAX_LOGIN_FAIL_COUNT
-                ? now.plusSeconds(LOCK_MINUTES * 60)
-                : this.lockedUntil;
-
-        return copyWithLoginState(nextFailCount, nextLockedUntil);
-    }
-
-    public AuthDomain resetLoginFailure() {
-        return copyWithLoginState(0, null);
-    }
-
-    private AuthDomain copyWithLoginState(int loginFailCount, Instant lockedUntil) {
-        return AuthDomain.builder()
-                .authUuid(this.authUuid)
-                .loginId(this.loginId)
-                .memberName(this.memberName)
-                .birthdayDate(this.birthdayDate)
-                .phoneNumber(this.phoneNumber)
-                .gender(this.gender)
-                .email(this.email)
-                .identityKey(this.identityKey)
-                .passwordHash(this.passwordHash)
-                .passwordChangedAt(this.passwordChangedAt)
-                .loginFailCount(loginFailCount)
-                .lockedUntil(lockedUntil)
-                .createdAt(this.createdAt)
-                .updatedAt(this.updatedAt)
-                .build();
+    /** 평문 비밀번호 검증 — Application에서 encode 전에 호출 */
+    public static void validatePlainPassword(String password) {
+        if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new IllegalArgumentException(
+                    "비밀번호는 8~20자, 영문 대문자·소문자·숫자·특수문자(!@#$%^&*()-+_=)를 각각 1자 이상 포함해야 합니다."
+            );
+        }
     }
 
     private static void validateLoginId(String loginId) {
@@ -186,15 +151,6 @@ public class AuthDomain {
     private static void validatePasswordHash(String passwordHash) {
         if (passwordHash == null || passwordHash.isBlank()) {
             throw new IllegalArgumentException("passwordHash는 필수입니다.");
-        }
-    }
-
-    /** 평문 비밀번호 검증 — Application에서 encode 전에 호출 */
-    public static void validatePlainPassword(String password) {
-        if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
-            throw new IllegalArgumentException(
-                    "비밀번호는 8~20자, 영문 대문자·소문자·숫자·특수문자(!@#$%^&*()-+_=)를 각각 1자 이상 포함해야 합니다."
-            );
         }
     }
 
@@ -244,13 +200,6 @@ public class AuthDomain {
         }
     }
 
-    private static void validateIdentityKey(String identityKey) {
-        // CI(identityKey) — 동일인 중복 가입 방지용, auth 테이블에만 저장
-        if (identityKey == null || identityKey.isBlank()) {
-            throw new IllegalArgumentException("identityKey(CI)는 필수입니다.");
-        }
-    }
-
     @Builder(access = AccessLevel.PRIVATE)
     private AuthDomain(
             String authUuid,
@@ -260,11 +209,9 @@ public class AuthDomain {
             String phoneNumber,
             Gender gender,
             String email,
-            String identityKey,
             String passwordHash,
             Instant passwordChangedAt,
-            int loginFailCount,
-            Instant lockedUntil,
+            MemberStatus memberStatus,
             Instant createdAt,
             Instant updatedAt
     ) {
@@ -275,11 +222,9 @@ public class AuthDomain {
         this.phoneNumber = phoneNumber;
         this.gender = gender;
         this.email = email;
-        this.identityKey = identityKey;
         this.passwordHash = passwordHash;
         this.passwordChangedAt = passwordChangedAt;
-        this.loginFailCount = loginFailCount;
-        this.lockedUntil = lockedUntil;
+        this.memberStatus = memberStatus;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }

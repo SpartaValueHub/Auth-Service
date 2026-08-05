@@ -9,7 +9,7 @@ import lombok.Getter;
 
 import java.time.LocalDate;
 
-/** 본인인증 HTTP 응답 — memberName·phone·birthday는 prefill 전용, DB 이력에는 status만 저장 */
+/** 본인인증 confirm HTTP 응답 — memberName·phone·gender는 prefill 전용 */
 @Getter
 @Builder
 @Schema(description = "본인인증 결과")

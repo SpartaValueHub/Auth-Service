@@ -7,6 +7,21 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
 
 eureka:
   client:
@@ -16,3 +31,19 @@ eureka:
 logging:
   level:
     root: WARN
+    org.hibernate.SQL: OFF
+    org.hibernate.orm.jdbc.bind: OFF
+    org.hibernate.type.descriptor.sql: OFF
+
+auth:
+  cookie:
+    secure: true
+    same-site: ${AUTH_COOKIE_SAME_SITE:None}
+  origin:
+    require-origin: true
+    allowed-origins: ${AUTH_ALLOWED_ORIGINS:}
+
+# prod: allowed-hostnames 미설정 시 siteverify hostname 검증 전부 거부(fail-closed)
+captcha:
+  recaptcha:
+    allowed-hostnames: ${AUTH_CAPTCHA_ALLOWED_HOSTNAMES:}

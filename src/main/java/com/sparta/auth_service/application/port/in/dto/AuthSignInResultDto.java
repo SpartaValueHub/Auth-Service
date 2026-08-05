@@ -11,9 +11,7 @@ public class AuthSignInResultDto {
     private final String accessToken;
     private final String refreshToken;
     private final String authUuid;
-    private final String loginId;
     private final String memberName;
-    private final String email;
     /** member-service 연동 전 기본 역할 */
     private final String role;
 }
