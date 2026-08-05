@@ -48,12 +48,9 @@ public class AuthWebMapper {
 
     public AuthSignInResponseVo toVo(AuthSignInResultDto dto) {
         return AuthSignInResponseVo.builder()
-                .accessToken(dto.getAccessToken())
-                .refreshToken(dto.getRefreshToken())
-                .authUuid(dto.getAuthUuid())
-                .logInId(dto.getLoginId())
-                .memberName(dto.getMemberName())
-                .email(dto.getEmail())
+                .memberUuid(dto.getAuthUuid())
+                .nickname(dto.getMemberName())
+                .role(dto.getRole())
                 .build();
     }
 

@@ -44,6 +44,7 @@ public class JwtTokenProvider implements TokenProviderPort {
                 .setId(UUID.randomUUID().toString()) // jti — logout blacklist 키
                 .setSubject(authUuid)
                 .claim("tokenType", "access")
+                .claim("role", "USER")
                 .setIssuedAt(now)
                 .setExpiration(exp)
                 .signWith(privateKey, SignatureAlgorithm.RS256)

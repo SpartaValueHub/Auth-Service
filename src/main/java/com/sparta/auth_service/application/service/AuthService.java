@@ -45,6 +45,7 @@ import java.time.Instant;
 public class AuthService implements AuthUseCase {
 
     private static final long REFRESH_TOKEN_TTL_SECONDS = 14L * 24 * 60 * 60;
+    private static final String DEFAULT_ROLE = "USER";
 
     private final AuthRepositoryPort authRepositoryPort;
     private final PasswordEncoderPort passwordEncoderPort;
@@ -218,6 +219,7 @@ public class AuthService implements AuthUseCase {
                 .loginId(auth.getLoginId())
                 .memberName(auth.getMemberName())
                 .email(auth.getEmail())
+                .role(DEFAULT_ROLE)
                 .build();
     }
 

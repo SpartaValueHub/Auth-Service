@@ -38,6 +38,15 @@ jwt:
   private-key: ${JWT_PRIVATE_KEY:}
   private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
 
+auth:
+  cookie:
+    access-name: ${AUTH_COOKIE_ACCESS_NAME:vh_access_token}
+    refresh-name: ${AUTH_COOKIE_REFRESH_NAME:vh_refresh_token}
+    path: ${AUTH_COOKIE_PATH:/}
+    domain: ${AUTH_COOKIE_DOMAIN:}
+    secure: ${AUTH_COOKIE_SECURE:false}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
+
 portone:
   api-secret: ${PORTONE_API_SECRET}
   base-url: ${PORTONE_BASE_URL:https://api.portone.io}
