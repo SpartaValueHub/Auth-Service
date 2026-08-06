@@ -5,11 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /** 본인인증 상태 조회 POST body — requestToken을 URL·query·cookie에 노출하지 않음 */
 @Getter
-@Setter
 @NoArgsConstructor
 @Schema(description = "본인인증 상태 조회 요청")
 public class IdentityVerificationStatusRequestVo {

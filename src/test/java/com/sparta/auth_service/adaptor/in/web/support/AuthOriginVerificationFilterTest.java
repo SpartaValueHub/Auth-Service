@@ -27,10 +27,7 @@ class AuthOriginVerificationFilterTest {
 
     @BeforeEach
     void setUp() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(true);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", true);
         filter = new AuthOriginVerificationFilter(properties, new ObjectMapper().registerModule(new JavaTimeModule()));
     }
 
@@ -73,10 +70,7 @@ class AuthOriginVerificationFilterTest {
 
     @Test
     void refresh_allowsMissingOriginWhenNotRequired() throws Exception {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(false);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", false);
         AuthOriginVerificationFilter relaxedFilter = new AuthOriginVerificationFilter(
                 properties,
                 new ObjectMapper().registerModule(new JavaTimeModule())

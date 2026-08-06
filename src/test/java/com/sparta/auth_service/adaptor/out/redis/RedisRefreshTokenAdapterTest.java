@@ -1,6 +1,7 @@
 package com.sparta.auth_service.adaptor.out.redis;
 
 import com.sparta.auth_service.application.exception.SecurityStoreUnavailableException;
+import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -52,18 +53,21 @@ class RedisRefreshTokenAdapterTest {
     }
 
     @Test
-    void rotate_returnsFalseWhenTtlIsZero() {
-        boolean rotated = adapter.rotate("uuid-001", "old-jti", "new-jti", 0L);
+    void rotate_returnsJtiMismatchWhenTtlIsZero() {
+        RefreshTokenRotationResult rotated = adapter.rotate("uuid-001", "old-jti", "new-jti", 0L);
 
-        assertThat(rotated).isFalse();
+        assertThat(rotated).isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
         verify(stringRedisTemplate, never()).execute(any(), any(List.class), any());
     }
 
     @Test
-    void rotate_returnsFalseWhenInputsBlank() {
-        assertThat(adapter.rotate(null, "old-jti", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate("uuid-001", "", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate("uuid-001", "old-jti", null, 60L)).isFalse();
+    void rotate_returnsJtiMismatchWhenInputsBlank() {
+        assertThat(adapter.rotate(null, "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate("uuid-001", "", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate("uuid-001", "old-jti", null, 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
 
         verify(stringRedisTemplate, never()).execute(any(), any(List.class), any());
     }
@@ -105,10 +109,27 @@ class RedisRefreshTokenAdapterTest {
     }
 
     @Test
-    void rotate_returnsFalseWhenJtiMismatch() {
+    void rotate_returnsJtiMismatchWhenJtiMismatch() {
         when(stringRedisTemplate.execute(any(), anyList(), any(), any(), any())).thenReturn(0L);
 
-        assertThat(adapter.rotate("uuid-001", "old-jti", "new-jti", 60L)).isFalse();
+        assertThat(adapter.rotate("uuid-001", "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+    }
+
+    @Test
+    void rotate_returnsKeyNotFoundWhenRedisKeyMissing() {
+        when(stringRedisTemplate.execute(any(), anyList(), any(), any(), any())).thenReturn(2L);
+
+        assertThat(adapter.rotate("uuid-001", "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.KEY_NOT_FOUND);
+    }
+
+    @Test
+    void rotate_returnsSuccessWhenRedisScriptReturnsOne() {
+        when(stringRedisTemplate.execute(any(), anyList(), any(), any(), any())).thenReturn(1L);
+
+        assertThat(adapter.rotate("uuid-001", "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.SUCCESS);
     }
 
     @Test
@@ -116,6 +137,37 @@ class RedisRefreshTokenAdapterTest {
         when(stringRedisTemplate.delete("auth:refresh:uuid-001")).thenThrow(new RuntimeException("down"));
 
         assertThatThrownBy(() -> adapter.delete("uuid-001"))
+                .isInstanceOf(SecurityStoreUnavailableException.class);
+    }
+
+    @Test
+    void deleteIfMatches_returnsFalseWhenInputsBlank() {
+        assertThat(adapter.deleteIfMatches(null, "jti")).isFalse();
+        assertThat(adapter.deleteIfMatches("uuid-001", null)).isFalse();
+
+        verify(stringRedisTemplate, never()).execute(any(), anyList(), any());
+    }
+
+    @Test
+    void deleteIfMatches_returnsTrueWhenRedisScriptReturnsOne() {
+        when(stringRedisTemplate.execute(any(), anyList(), any())).thenReturn(1L);
+
+        assertThat(adapter.deleteIfMatches("uuid-001", "jti-001")).isTrue();
+    }
+
+    @Test
+    void deleteIfMatches_returnsFalseWhenRedisScriptReturnsZero() {
+        when(stringRedisTemplate.execute(any(), anyList(), any())).thenReturn(0L);
+
+        assertThat(adapter.deleteIfMatches("uuid-001", "jti-001")).isFalse();
+    }
+
+    @Test
+    void deleteIfMatches_throwsWhenRedisExecuteFails() {
+        when(stringRedisTemplate.execute(any(), anyList(), any()))
+                .thenThrow(new RuntimeException("redis down"));
+
+        assertThatThrownBy(() -> adapter.deleteIfMatches("uuid-001", "jti-001"))
                 .isInstanceOf(SecurityStoreUnavailableException.class);
     }
 }

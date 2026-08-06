@@ -54,11 +54,7 @@ class RedisLoginRateLimitAdapterIntegrationTest {
     @BeforeEach
     void setUp() {
         testIp = "203.0.113." + (100 + Math.abs(UUID.randomUUID().hashCode() % 100));
-        properties = new LoginRateLimitProperties();
-        properties.setEnabled(true);
-        properties.setMaxAttempts(20);
-        properties.setWindowSeconds(60);
-        properties.setBlockSeconds(60);
+        properties = new LoginRateLimitProperties(true, 20, 60, 60);
         adapter = new RedisLoginRateLimitAdapter(stringRedisTemplate, properties);
     }
 
@@ -116,8 +112,7 @@ class RedisLoginRateLimitAdapterIntegrationTest {
 
     @Test
     void allowsAgainAfterBlockAndWindowExpire() throws InterruptedException {
-        properties.setBlockSeconds(2);
-        properties.setWindowSeconds(2);
+        properties = new LoginRateLimitProperties(true, 20, 2, 2);
         adapter = new RedisLoginRateLimitAdapter(stringRedisTemplate, properties);
 
         for (int i = 0; i < 21; i++) {

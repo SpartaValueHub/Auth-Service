@@ -10,8 +10,9 @@ class CaptchaPropertiesTest {
 
     @Test
     void normalizesAllowedHostnamesWithTrimAndLowercase() {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.getRecaptcha().setAllowedHostnames(" localhost , 127.0.0.1 , ValueHub.Example.COM ");
+        CaptchaProperties properties = captchaPropertiesWithAllowedHostnames(
+                " localhost , 127.0.0.1 , ValueHub.Example.COM "
+        );
 
         assertThat(properties.normalizedAllowedHostnames())
                 .containsExactlyInAnyOrder("localhost", "127.0.0.1", "valuehub.example.com");
@@ -19,26 +20,37 @@ class CaptchaPropertiesTest {
 
     @Test
     void returnsEmptySetWhenAllowedHostnamesBlank() {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.getRecaptcha().setAllowedHostnames("   ");
+        CaptchaProperties properties = captchaPropertiesWithAllowedHostnames("   ");
 
         assertThat(properties.normalizedAllowedHostnames()).isEmpty();
     }
 
     @Test
     void returnsEmptySetWhenAllowedHostnamesNull() {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.getRecaptcha().setAllowedHostnames(null);
+        CaptchaProperties properties = new CaptchaProperties(
+                true,
+                2000,
+                3000,
+                new CaptchaProperties.Recaptcha("", null, 120)
+        );
 
         assertThat(properties.normalizedAllowedHostnames()).isEmpty();
     }
 
     @Test
     void ignoresEmptySegments() {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.getRecaptcha().setAllowedHostnames("localhost,,127.0.0.1,");
+        CaptchaProperties properties = captchaPropertiesWithAllowedHostnames("localhost,,127.0.0.1,");
 
         assertThat(properties.normalizedAllowedHostnames())
                 .isEqualTo(Set.of("localhost", "127.0.0.1"));
+    }
+
+    private static CaptchaProperties captchaPropertiesWithAllowedHostnames(String allowedHostnames) {
+        return new CaptchaProperties(
+                true,
+                2000,
+                3000,
+                new CaptchaProperties.Recaptcha("", allowedHostnames, 120)
+        );
     }
 }

@@ -4,11 +4,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 /** Google reCAPTCHA v2 siteverify 응답 — score/action(v3) 미사용 */
 @Getter
-@Setter
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 class RecaptchaSiteVerifyResponse {
@@ -22,4 +20,11 @@ class RecaptchaSiteVerifyResponse {
 
     @JsonProperty("error-codes")
     private String[] errorCodes;
+
+    RecaptchaSiteVerifyResponse(boolean success, String challengeTs, String hostname, String[] errorCodes) {
+        this.success = success;
+        this.challengeTs = challengeTs;
+        this.hostname = hostname;
+        this.errorCodes = errorCodes;
+    }
 }

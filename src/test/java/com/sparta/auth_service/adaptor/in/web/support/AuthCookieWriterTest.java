@@ -14,15 +14,17 @@ class AuthCookieWriterTest {
 
     @BeforeEach
     void setUp() {
-        AuthCookieProperties cookieProperties = new AuthCookieProperties();
-        cookieProperties.setAccessName("vh_access_token");
-        cookieProperties.setRefreshName("vh_refresh_token");
-        cookieProperties.setPath("/");
-        cookieProperties.setRefreshPath("/");
+        AuthCookieProperties cookieProperties = new AuthCookieProperties(
+                "vh_access_token",
+                "vh_refresh_token",
+                "/",
+                "/",
+                "",
+                false,
+                "Lax"
+        );
 
-        JwtProperties jwtProperties = new JwtProperties();
-        jwtProperties.setAccessTokenMinutes(15L);
-        jwtProperties.setRefreshTokenDays(14L);
+        JwtProperties jwtProperties = new JwtProperties(null, null, 15L, 14L);
 
         authCookieWriter = new AuthCookieWriter(cookieProperties, jwtProperties);
     }

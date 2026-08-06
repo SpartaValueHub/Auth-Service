@@ -47,11 +47,12 @@ class GoogleRecaptchaVerificationAdapterTest {
         mockServer = MockRestServiceServer.bindTo(restClientBuilder).build();
         RestClient restClient = restClientBuilder.build();
 
-        captchaProperties = new CaptchaProperties();
-        captchaProperties.setEnabled(true);
-        captchaProperties.getRecaptcha().setSecretKey("test-secret");
-        captchaProperties.getRecaptcha().setAllowedHostnames("localhost,127.0.0.1");
-        captchaProperties.getRecaptcha().setChallengeMaxAgeSeconds(120);
+        captchaProperties = new CaptchaProperties(
+                true,
+                2000,
+                3000,
+                new CaptchaProperties.Recaptcha("test-secret", "localhost,127.0.0.1", 120)
+        );
 
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         adapter = new GoogleRecaptchaVerificationAdapter(
@@ -64,10 +65,19 @@ class GoogleRecaptchaVerificationAdapterTest {
 
     @Test
     void verifyReturnsTrueWhenCaptchaDisabled() {
-        captchaProperties.setEnabled(false);
+        GoogleRecaptchaVerificationAdapter disabledAdapter = new GoogleRecaptchaVerificationAdapter(
+                new CaptchaProperties(
+                        false,
+                        2000,
+                        3000,
+                        new CaptchaProperties.Recaptcha("test-secret", "localhost,127.0.0.1", 120)
+                ),
+                new RecaptchaVerificationEvaluator(),
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                RestClient.builder().build()
+        );
 
-        assertThat(adapter.verify("any-token")).isTrue();
-        mockServer.verify();
+        assertThat(disabledAdapter.verify("any-token")).isTrue();
     }
 
     @Test
@@ -272,10 +282,14 @@ class GoogleRecaptchaVerificationAdapterTest {
 
     @Test
     void recaptchaRestClientFactoryAppliesConfiguredTimeouts() {
-        captchaProperties.setConnectTimeoutMillis(1500);
-        captchaProperties.setReadTimeoutMillis(2500);
+        CaptchaProperties timeoutProperties = new CaptchaProperties(
+                true,
+                1500,
+                2500,
+                new CaptchaProperties.Recaptcha("test-secret", "localhost,127.0.0.1", 120)
+        );
 
-        RestClient restClient = RecaptchaRestClientFactory.create(captchaProperties);
+        RestClient restClient = RecaptchaRestClientFactory.create(timeoutProperties);
 
         assertThat(restClient).isNotNull();
     }

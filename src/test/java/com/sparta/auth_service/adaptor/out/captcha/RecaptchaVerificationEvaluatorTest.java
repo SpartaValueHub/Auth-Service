@@ -55,8 +55,7 @@ class RecaptchaVerificationEvaluatorTest {
 
     @Test
     void rejectsSuccessFalse() {
-        RecaptchaSiteVerifyResponse response = validResponse("localhost", "2026-08-05T09:59:30Z");
-        response.setSuccess(false);
+        RecaptchaSiteVerifyResponse response = validResponse("localhost", "2026-08-05T09:59:30Z", false);
 
         assertThat(evaluator.evaluate(response, ALLOWED, 120, clock))
                 .contains(FailReason.SUCCESS_FALSE);
@@ -136,10 +135,10 @@ class RecaptchaVerificationEvaluatorTest {
     }
 
     private static RecaptchaSiteVerifyResponse validResponse(String hostname, String challengeTs) {
-        RecaptchaSiteVerifyResponse response = new RecaptchaSiteVerifyResponse();
-        response.setSuccess(true);
-        response.setHostname(hostname);
-        response.setChallengeTs(challengeTs);
-        return response;
+        return validResponse(hostname, challengeTs, true);
+    }
+
+    private static RecaptchaSiteVerifyResponse validResponse(String hostname, String challengeTs, boolean success) {
+        return new RecaptchaSiteVerifyResponse(success, challengeTs, hostname, null);
     }
 }

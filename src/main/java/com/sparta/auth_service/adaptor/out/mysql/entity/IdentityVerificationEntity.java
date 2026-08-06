@@ -16,7 +16,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -24,7 +23,6 @@ import java.time.Instant;
 
 /** 본인인증 이력 — 원본 CI는 저장하지 않고 HMAC-SHA256 처리한 ci_hash만 저장 */
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 @Entity
@@ -83,6 +81,23 @@ public class IdentityVerificationEntity {
         this.memberUuid = memberUuid;
         this.purpose = purpose;
         this.requestToken = requestToken;
+        this.verificationMethod = verificationMethod;
+        this.ciHash = ciHash;
+        this.verificationStatus = verificationStatus;
+        this.verifiedAt = verifiedAt;
+    }
+
+    /** requestToken·verificationUuid는 생성 후 변경 없음 */
+    public void updateVerification(
+            String memberUuid,
+            VerificationPurpose purpose,
+            VerificationMethod verificationMethod,
+            String ciHash,
+            VerificationStatus verificationStatus,
+            Instant verifiedAt
+    ) {
+        this.memberUuid = memberUuid;
+        this.purpose = purpose;
         this.verificationMethod = verificationMethod;
         this.ciHash = ciHash;
         this.verificationStatus = verificationStatus;

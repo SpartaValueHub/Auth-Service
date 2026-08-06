@@ -17,6 +17,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -63,9 +65,9 @@ class RedisRefreshTokenAdapterIntegrationTest {
     void rotate_succeedsWhenExpectedTokenMatches() {
         adapter.save(authUuid, "old-jti", 60L);
 
-        boolean rotated = adapter.rotate(authUuid, "old-jti", "new-jti", 60L);
+        RefreshTokenRotationResult rotated = adapter.rotate(authUuid, "old-jti", "new-jti", 60L);
 
-        assertThat(rotated).isTrue();
+        assertThat(rotated).isEqualTo(RefreshTokenRotationResult.SUCCESS);
         assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("new-jti");
     }
 
@@ -83,26 +85,27 @@ class RedisRefreshTokenAdapterIntegrationTest {
     void rotate_failsOnMismatchWithoutChangingValue() {
         adapter.save(authUuid, "stored-jti", 60L);
 
-        boolean rotated = adapter.rotate(authUuid, "wrong-jti", "new-jti", 60L);
+        RefreshTokenRotationResult rotated = adapter.rotate(authUuid, "wrong-jti", "new-jti", 60L);
 
-        assertThat(rotated).isFalse();
+        assertThat(rotated).isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
         assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("stored-jti");
     }
 
     @Test
     void rotate_failsWhenKeyMissing() {
-        boolean rotated = adapter.rotate(authUuid, "old-jti", "new-jti", 60L);
+        RefreshTokenRotationResult rotated = adapter.rotate(authUuid, "old-jti", "new-jti", 60L);
 
-        assertThat(rotated).isFalse();
-        assertThat(stringRedisTemplate.hasKey(KEY_PREFIX + authUuid)).isFalse();
+        assertThat(rotated).isEqualTo(RefreshTokenRotationResult.KEY_NOT_FOUND);
     }
 
     @Test
     void rotate_returnsFalseWhenTtlIsZeroOrNegative() {
         adapter.save(authUuid, "old-jti", 60L);
 
-        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti", 0L)).isFalse();
-        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti", -1L)).isFalse();
+        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti", 0L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti", -1L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
         assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("old-jti");
     }
 
@@ -110,13 +113,20 @@ class RedisRefreshTokenAdapterIntegrationTest {
     void rotate_returnsFalseForNullOrBlankInputs() {
         adapter.save(authUuid, "old-jti", 60L);
 
-        assertThat(adapter.rotate(null, "old-jti", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate("", "old-jti", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate("  ", "old-jti", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate(authUuid, null, "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate(authUuid, "", "new-jti", 60L)).isFalse();
-        assertThat(adapter.rotate(authUuid, "old-jti", null, 60L)).isFalse();
-        assertThat(adapter.rotate(authUuid, "old-jti", "", 60L)).isFalse();
+        assertThat(adapter.rotate(null, "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate("", "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate("  ", "old-jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate(authUuid, null, "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate(authUuid, "", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate(authUuid, "old-jti", null, 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
+        assertThat(adapter.rotate(authUuid, "old-jti", "", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
 
         assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("old-jti");
     }
@@ -144,11 +154,34 @@ class RedisRefreshTokenAdapterIntegrationTest {
     }
 
     @Test
+    void deleteIfMatches_deletesWhenExpectedTokenMatches() {
+        adapter.save(authUuid, "stored-jti", 60L);
+
+        assertThat(adapter.deleteIfMatches(authUuid, "stored-jti")).isTrue();
+        assertThat(stringRedisTemplate.hasKey(KEY_PREFIX + authUuid)).isFalse();
+    }
+
+    @Test
+    void deleteIfMatches_failsOnMismatchWithoutDeletingKey() {
+        adapter.save(authUuid, "stored-jti", 60L);
+
+        assertThat(adapter.deleteIfMatches(authUuid, "wrong-jti")).isFalse();
+        assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("stored-jti");
+    }
+
+    @Test
+    void deleteIfMatches_returnsFalseWhenKeyMissing() {
+        assertThat(adapter.deleteIfMatches(authUuid, "missing-jti")).isFalse();
+    }
+
+    @Test
     void sequentialTwoRotations_onlyFirstSucceeds() {
         adapter.save(authUuid, "old-jti", 60L);
 
-        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti-1", 60L)).isTrue();
-        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti-2", 60L)).isFalse();
+        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti-1", 60L))
+                .isEqualTo(RefreshTokenRotationResult.SUCCESS);
+        assertThat(adapter.rotate(authUuid, "old-jti", "new-jti-2", 60L))
+                .isEqualTo(RefreshTokenRotationResult.JTI_MISMATCH);
 
         assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("new-jti-1");
     }
@@ -169,7 +202,7 @@ class RedisRefreshTokenAdapterIntegrationTest {
             executor.submit(() -> {
                 try {
                     start.await();
-                    if (adapter.rotate(authUuid, "old-jti", newJti, 60L)) {
+                    if (adapter.rotate(authUuid, "old-jti", newJti, 60L) == RefreshTokenRotationResult.SUCCESS) {
                         successCount.incrementAndGet();
                         synchronized (newJtis) {
                             newJtis.add(newJti);
@@ -199,8 +232,10 @@ class RedisRefreshTokenAdapterIntegrationTest {
             adapter.save(authUuid, "jti-a", 60L);
             adapter.save(otherAuthUuid, "jti-b", 60L);
 
-            assertThat(adapter.rotate(authUuid, "jti-a", "new-a", 60L)).isTrue();
-            assertThat(adapter.rotate(otherAuthUuid, "jti-b", "new-b", 60L)).isTrue();
+            assertThat(adapter.rotate(authUuid, "jti-a", "new-a", 60L))
+                    .isEqualTo(RefreshTokenRotationResult.SUCCESS);
+            assertThat(adapter.rotate(otherAuthUuid, "jti-b", "new-b", 60L))
+                    .isEqualTo(RefreshTokenRotationResult.SUCCESS);
 
             assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + authUuid)).isEqualTo("new-a");
             assertThat(stringRedisTemplate.opsForValue().get(KEY_PREFIX + otherAuthUuid)).isEqualTo("new-b");
@@ -218,6 +253,7 @@ class RedisRefreshTokenAdapterIntegrationTest {
         Thread.sleep(2_500L);
 
         assertThat(stringRedisTemplate.hasKey(KEY_PREFIX + authUuid)).isFalse();
-        assertThat(adapter.rotate(authUuid, "jti", "new-jti", 60L)).isFalse();
+        assertThat(adapter.rotate(authUuid, "jti", "new-jti", 60L))
+                .isEqualTo(RefreshTokenRotationResult.KEY_NOT_FOUND);
     }
 }

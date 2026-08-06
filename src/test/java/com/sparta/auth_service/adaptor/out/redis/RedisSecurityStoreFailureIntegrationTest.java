@@ -44,9 +44,8 @@ class RedisSecurityStoreFailureIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        rateLimitProperties = new LoginRateLimitProperties();
-        rateLimitProperties.setEnabled(true);
-        loginAttemptProperties = new LoginAttemptProperties();
+        rateLimitProperties = new LoginRateLimitProperties(true, 20, 60, 60);
+        loginAttemptProperties = new LoginAttemptProperties(5, 6, 1, 10);
     }
 
     @Test

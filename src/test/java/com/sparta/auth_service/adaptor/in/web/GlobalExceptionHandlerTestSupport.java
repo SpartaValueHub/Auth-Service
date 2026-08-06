@@ -9,8 +9,7 @@ final class GlobalExceptionHandlerTestSupport {
     }
 
     static GlobalExceptionHandler handler() {
-        DependencyFailureProperties properties = new DependencyFailureProperties();
-        properties.setRetryAfterSeconds(5);
+        DependencyFailureProperties properties = new DependencyFailureProperties(5);
         return new GlobalExceptionHandler(properties);
     }
 }

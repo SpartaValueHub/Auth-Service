@@ -24,14 +24,16 @@ public class AuthEntityMapper {
     }
 
     public void updateEntity(AuthEntity entity, AuthDomain domain) {
-        entity.setMemberName(domain.getMemberName());
-        entity.setBirthdayDate(domain.getBirthdayDate());
-        entity.setPhoneNumber(domain.getPhoneNumber());
-        entity.setGender(domain.getGender());
-        entity.setEmail(domain.getEmail());
-        entity.setPasswordHash(domain.getPasswordHash());
-        entity.setPasswordChangedAt(domain.getPasswordChangedAt());
-        entity.setMemberStatus(domain.getMemberStatus());
+        entity.updateProfile(
+                domain.getMemberName(),
+                domain.getBirthdayDate(),
+                domain.getPhoneNumber(),
+                domain.getGender(),
+                domain.getEmail(),
+                domain.getPasswordHash(),
+                domain.getPasswordChangedAt(),
+                domain.getMemberStatus()
+        );
     }
 
     public AuthDomain toDomain(AuthEntity entity) {

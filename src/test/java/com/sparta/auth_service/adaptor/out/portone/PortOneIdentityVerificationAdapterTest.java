@@ -38,11 +38,7 @@ class PortOneIdentityVerificationAdapterTest {
         mockServer = MockRestServiceServer.bindTo(builder).build();
         RestClient restClient = builder.build();
 
-        properties = new PortOneProperties();
-        properties.setApiSecret("test-secret");
-        properties.setBaseUrl(BASE_URL);
-        properties.setConnectTimeoutMillis(2000);
-        properties.setReadTimeoutMillis(5000);
+        properties = new PortOneProperties("test-secret", BASE_URL, 2000, 5000);
 
         adapter = new PortOneIdentityVerificationAdapter(restClient);
     }
@@ -115,10 +111,9 @@ class PortOneIdentityVerificationAdapterTest {
 
     @Test
     void portOneRestClientFactoryAppliesConfiguredTimeouts() {
-        properties.setConnectTimeoutMillis(1500);
-        properties.setReadTimeoutMillis(4500);
+        PortOneProperties timeoutProperties = new PortOneProperties("test-secret", BASE_URL, 1500, 4500);
 
-        RestClient restClient = PortOneRestClientFactory.create(properties);
+        RestClient restClient = PortOneRestClientFactory.create(timeoutProperties);
 
         assertThat(restClient).isNotNull();
     }

@@ -3,9 +3,8 @@ package com.sparta.auth_service.adaptor.out.captcha;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
@@ -16,22 +15,32 @@ import java.util.stream.Collectors;
 
 /** Google reCAPTCHA v2 siteverify 연동 설정 */
 @Getter
-@Setter
 @Validated
-@Component
 @ConfigurationProperties(prefix = "captcha")
 public class CaptchaProperties {
 
-    private boolean enabled = true;
+    private final boolean enabled;
 
     @Min(1)
-    private int connectTimeoutMillis = 2000;
+    private final int connectTimeoutMillis;
 
     @Min(1)
-    private int readTimeoutMillis = 3000;
+    private final int readTimeoutMillis;
 
     @Valid
-    private Recaptcha recaptcha = new Recaptcha();
+    private final Recaptcha recaptcha;
+
+    public CaptchaProperties(
+            @DefaultValue("true") boolean enabled,
+            @DefaultValue("2000") @Min(1) int connectTimeoutMillis,
+            @DefaultValue("3000") @Min(1) int readTimeoutMillis,
+            @Valid Recaptcha recaptcha
+    ) {
+        this.enabled = enabled;
+        this.connectTimeoutMillis = connectTimeoutMillis;
+        this.readTimeoutMillis = readTimeoutMillis;
+        this.recaptcha = recaptcha != null ? recaptcha : new Recaptcha("", "localhost,127.0.0.1", 120);
+    }
 
     public Set<String> normalizedAllowedHostnames() {
         if (recaptcha == null || !StringUtils.hasText(recaptcha.getAllowedHostnames())) {
@@ -45,16 +54,26 @@ public class CaptchaProperties {
     }
 
     @Getter
-    @Setter
+    @Validated
     public static class Recaptcha {
 
-        private String secretKey = "";
+        private final String secretKey;
 
         /** siteverify 응답 hostname 허용 목록 — 쉼표 구분, exact match(소문자 정규화). 비어 있으면 모두 거부 */
-        private String allowedHostnames = "localhost,127.0.0.1";
+        private final String allowedHostnames;
 
         /** challenge_ts 최대 허용 경과(초) */
         @Min(1)
-        private int challengeMaxAgeSeconds = 120;
+        private final int challengeMaxAgeSeconds;
+
+        public Recaptcha(
+                @DefaultValue("") String secretKey,
+                @DefaultValue("localhost,127.0.0.1") String allowedHostnames,
+                @DefaultValue("120") @Min(1) int challengeMaxAgeSeconds
+        ) {
+            this.secretKey = secretKey;
+            this.allowedHostnames = allowedHostnames;
+            this.challengeMaxAgeSeconds = challengeMaxAgeSeconds;
+        }
     }
 }

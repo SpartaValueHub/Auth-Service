@@ -81,4 +81,28 @@ class RedisActiveAccessTokenAdapterTest {
         assertThatThrownBy(() -> adapter.delete("uuid-001"))
                 .isInstanceOf(SecurityStoreUnavailableException.class);
     }
+
+    @Test
+    void deleteIfMatches_returnsFalseWhenInputsBlank() {
+        assertThat(adapter.deleteIfMatches(null, "jti")).isFalse();
+        assertThat(adapter.deleteIfMatches("uuid-001", "  ")).isFalse();
+
+        verify(stringRedisTemplate, never()).execute(any(), any(), any());
+    }
+
+    @Test
+    void deleteIfMatches_returnsTrueWhenRedisScriptReturnsOne() {
+        when(stringRedisTemplate.execute(any(), any(), any())).thenReturn(1L);
+
+        assertThat(adapter.deleteIfMatches("uuid-001", "jti-001")).isTrue();
+    }
+
+    @Test
+    void deleteIfMatches_throwsWhenRedisExecuteFails() {
+        when(stringRedisTemplate.execute(any(), any(), any()))
+                .thenThrow(new RuntimeException("down"));
+
+        assertThatThrownBy(() -> adapter.deleteIfMatches("uuid-001", "jti-001"))
+                .isInstanceOf(SecurityStoreUnavailableException.class);
+    }
 }
