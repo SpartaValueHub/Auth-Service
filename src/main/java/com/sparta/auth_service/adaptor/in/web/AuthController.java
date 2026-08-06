@@ -80,14 +80,6 @@ public class AuthController {
         return tokenResponse(resultDto);
     }
 
-    @Operation(summary = "세션 유효성 확인", description = "Gateway JWT·blacklist 통과 시 204. 다른 기기 로그인 시 Gateway 401 AUTH_SESSION_TERMINATED.")
-    @GetMapping("/auth/session")
-    public ResponseEntity<Void> sessionStatus() {
-        return ResponseEntity.noContent()
-                .header("Cache-Control", "no-store")
-                .build();
-    }
-
     @Operation(summary = "로그아웃", description = "Refresh Token 무효화·Access Token 블랙리스트·Cookie 삭제")
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout(
