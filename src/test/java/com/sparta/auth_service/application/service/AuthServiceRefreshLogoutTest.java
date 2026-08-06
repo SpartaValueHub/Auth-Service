@@ -8,8 +8,6 @@ import com.sparta.auth_service.adaptor.out.security.JwtProperties;
 
 import com.sparta.auth_service.application.exception.InvalidTokenException;
 
-import com.sparta.auth_service.application.exception.SessionTerminatedException;
-
 import com.sparta.auth_service.application.exception.MemberNotActiveException;
 import com.sparta.auth_service.application.exception.SecurityStoreUnavailableException;
 
@@ -475,7 +473,7 @@ class AuthServiceRefreshLogoutTest {
 
     @Test
 
-    void refresh_throwsSessionTerminatedWhenJtiMismatchAndAccessBlacklisted() {
+    void refresh_throwsInvalidTokenWhenJtiMismatchAndAccessBlacklisted() {
 
         stubRefreshTokenCreationMocks();
 
@@ -506,7 +504,7 @@ class AuthServiceRefreshLogoutTest {
 
                 new AuthRefreshRequestDto("old-refresh", "old-access")
 
-        )).isInstanceOf(SessionTerminatedException.class);
+        )).isInstanceOf(InvalidTokenException.class);
 
 
 

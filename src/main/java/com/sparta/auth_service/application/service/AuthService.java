@@ -13,7 +13,6 @@ import com.sparta.auth_service.application.exception.IdentityVerificationNotRead
 import com.sparta.auth_service.application.exception.InvalidTokenException;
 import com.sparta.auth_service.application.exception.LoginRateLimitedException;
 import com.sparta.auth_service.application.exception.MemberNotActiveException;
-import com.sparta.auth_service.application.exception.SessionTerminatedException;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
@@ -202,7 +201,7 @@ public class AuthService implements AuthUseCase {
                 refreshTtlSeconds
         );
         if (rotationResult != RefreshTokenRotationResult.SUCCESS) {
-            handleRefreshRotationFailure(rotationResult, requestDto.accessToken());
+            handleRefreshRotationFailure(rotationResult);
         }
 
         saveActiveAccessToken(parsed.getAuthUuid(), parsedAccess.getTokenId(), parsedAccess.getExpiresAt());
@@ -301,26 +300,11 @@ public class AuthService implements AuthUseCase {
         accessTokenBlacklistPort.blacklist(tokenId, ttlSeconds);
     }
 
-    private void handleRefreshRotationFailure(RefreshTokenRotationResult rotationResult, String accessToken) {
+    private void handleRefreshRotationFailure(RefreshTokenRotationResult rotationResult) {
         if (rotationResult == RefreshTokenRotationResult.KEY_NOT_FOUND) {
             throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
         }
-        if (rotationResult == RefreshTokenRotationResult.JTI_MISMATCH && isAccessTokenBlacklisted(accessToken)) {
-            throw new SessionTerminatedException("다른 기기에서 로그인하여 현재 세션이 종료되었습니다.");
-        }
         throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
-    }
-
-    private boolean isAccessTokenBlacklisted(String accessToken) {
-        if (accessToken == null || accessToken.isBlank()) {
-            return false;
-        }
-        try {
-            ParsedTokenDto parsedAccess = tokenProviderPort.parseAccessToken(accessToken.trim());
-            return accessTokenBlacklistPort.isBlacklisted(parsedAccess.getTokenId());
-        } catch (InvalidTokenException ex) {
-            return false;
-        }
     }
 
     private void revokeSessionForInactiveAccount(String authUuid) {
