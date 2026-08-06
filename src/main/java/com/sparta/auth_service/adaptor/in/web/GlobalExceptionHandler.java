@@ -16,7 +16,6 @@ import com.sparta.auth_service.application.exception.IdentityVerificationNotRead
 import com.sparta.auth_service.application.exception.InvalidTokenException;
 import com.sparta.auth_service.application.exception.LoginRateLimitedException;
 import com.sparta.auth_service.application.exception.MemberNotActiveException;
-import com.sparta.auth_service.application.exception.SessionTerminatedException;
 import com.sparta.auth_service.application.exception.SecurityStoreUnavailableException;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -213,15 +212,6 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(error(HttpStatus.UNAUTHORIZED, "AUTH_UNAUTHORIZED", ex.getMessage(), request.getRequestURI()));
-    }
-
-    @ExceptionHandler(SessionTerminatedException.class)
-    public ResponseEntity<ErrorResponseVo> handleSessionTerminated(
-            SessionTerminatedException ex,
-            HttpServletRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(error(HttpStatus.UNAUTHORIZED, ex.getCode(), ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(InvalidTokenException.class)
