@@ -7,6 +7,7 @@ import com.sparta.auth_service.application.exception.CaptchaProviderUnavailableE
 import com.sparta.auth_service.application.exception.DuplicateResourceException;
 import com.sparta.auth_service.application.exception.ExternalIdentityProviderUnavailableException;
 import com.sparta.auth_service.application.exception.LoginRateLimitedException;
+import com.sparta.auth_service.application.exception.SessionTerminatedException;
 import com.sparta.auth_service.application.exception.SecurityStoreUnavailableException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -192,5 +193,22 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getFieldErrors()).hasSize(1);
         assertThat(response.getBody().getFieldErrors().get(0).getField()).isEqualTo("requestToken");
         assertThat(response.getBody().getMessage()).doesNotContain("identity-verification");
+    }
+
+    @Test
+    void mapsSessionTerminatedTo401() {
+        when(request.getRequestURI()).thenReturn("/api/v1/auth/refresh");
+        SessionTerminatedException ex = new SessionTerminatedException(
+                "다른 기기에서 로그인하여 현재 세션이 종료되었습니다."
+        );
+
+        ResponseEntity<ErrorResponseVo> response = handler.handleSessionTerminated(ex, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo("AUTH_SESSION_TERMINATED");
+        assertThat(response.getBody().getMessage())
+                .isEqualTo("다른 기기에서 로그인하여 현재 세션이 종료되었습니다.");
+        assertThat(response.getBody().getPath()).isEqualTo("/api/v1/auth/refresh");
     }
 }

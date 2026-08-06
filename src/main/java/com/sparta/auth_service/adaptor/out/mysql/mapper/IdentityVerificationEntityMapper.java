@@ -22,12 +22,14 @@ public class IdentityVerificationEntityMapper {
     }
 
     public void updateEntity(IdentityVerificationEntity entity, IdentityVerificationDomain domain) {
-        entity.setMemberUuid(domain.getMemberUuid());
-        entity.setPurpose(domain.getPurpose());
-        entity.setVerificationMethod(domain.getVerificationMethod());
-        entity.setCiHash(domain.getCiHash());
-        entity.setVerificationStatus(domain.getVerificationStatus());
-        entity.setVerifiedAt(domain.getVerifiedAt());
+        entity.updateVerification(
+                domain.getMemberUuid(),
+                domain.getPurpose(),
+                domain.getVerificationMethod(),
+                domain.getCiHash(),
+                domain.getVerificationStatus(),
+                domain.getVerifiedAt()
+        );
     }
 
     public IdentityVerificationDomain toDomain(IdentityVerificationEntity entity) {

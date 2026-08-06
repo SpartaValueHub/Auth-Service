@@ -38,13 +38,12 @@ class LoginRateLimitPropertiesValidationTest {
             "blockSeconds, -10"
     })
     void rejectsInvalidFieldValues(String field, int value) {
-        LoginRateLimitProperties properties = new LoginRateLimitProperties();
-        switch (field) {
-            case "maxAttempts" -> properties.setMaxAttempts(value);
-            case "windowSeconds" -> properties.setWindowSeconds(value);
-            case "blockSeconds" -> properties.setBlockSeconds(value);
+        LoginRateLimitProperties properties = switch (field) {
+            case "maxAttempts" -> new LoginRateLimitProperties(true, value, 60, 60);
+            case "windowSeconds" -> new LoginRateLimitProperties(true, 20, value, 60);
+            case "blockSeconds" -> new LoginRateLimitProperties(true, 20, 60, value);
             default -> throw new IllegalArgumentException("unknown field: " + field);
-        }
+        };
 
         assertThat(VALIDATOR.validate(properties)).isNotEmpty();
     }

@@ -31,11 +31,7 @@ class RedisLoginRateLimitAdapterTest {
 
     @BeforeEach
     void setUp() {
-        properties = new LoginRateLimitProperties();
-        properties.setEnabled(true);
-        properties.setMaxAttempts(20);
-        properties.setWindowSeconds(60);
-        properties.setBlockSeconds(60);
+        properties = new LoginRateLimitProperties(true, 20, 60, 60);
         adapter = new RedisLoginRateLimitAdapter(stringRedisTemplate, properties);
     }
 
@@ -62,9 +58,12 @@ class RedisLoginRateLimitAdapterTest {
 
     @Test
     void checkAndRecordSkipsWhenDisabled() {
-        properties.setEnabled(false);
+        RedisLoginRateLimitAdapter disabledAdapter = new RedisLoginRateLimitAdapter(
+                stringRedisTemplate,
+                new LoginRateLimitProperties(false, 20, 60, 60)
+        );
 
-        LoginRateLimitResultDto result = adapter.checkAndRecord("203.0.113.10");
+        LoginRateLimitResultDto result = disabledAdapter.checkAndRecord("203.0.113.10");
 
         assertThat(result.isAllowed()).isTrue();
     }

@@ -72,13 +72,20 @@ public class AuthController {
     @Operation(summary = "토큰 갱신", description = "Refresh Token Cookie로 Access/Refresh Token을 재발급합니다.")
     @PostMapping("/auth/refresh")
     public ResponseEntity<AuthSignInResponseVo> refresh(
-            @CookieValue(name = "${auth.cookie.refresh-name:vh_refresh_token}", required = false) String refreshCookie
+            @CookieValue(name = "${auth.cookie.refresh-name:vh_refresh_token}", required = false) String refreshCookie,
+            @CookieValue(name = "${auth.cookie.access-name:vh_access_token}", required = false) String accessCookie
     ) {
-        AuthRefreshRequestDto requestDto = AuthRefreshRequestDto.builder()
-                .refreshToken(refreshCookie)
-                .build();
+        AuthRefreshRequestDto requestDto = new AuthRefreshRequestDto(refreshCookie, accessCookie);
         AuthSignInResultDto resultDto = authUseCase.refresh(requestDto);
         return tokenResponse(resultDto);
+    }
+
+    @Operation(summary = "세션 유효성 확인", description = "Gateway JWT·blacklist 통과 시 204. 다른 기기 로그인 시 Gateway 401 AUTH_SESSION_TERMINATED.")
+    @GetMapping("/auth/session")
+    public ResponseEntity<Void> sessionStatus() {
+        return ResponseEntity.noContent()
+                .header("Cache-Control", "no-store")
+                .build();
     }
 
     @Operation(summary = "로그아웃", description = "Refresh Token 무효화·Access Token 블랙리스트·Cookie 삭제")

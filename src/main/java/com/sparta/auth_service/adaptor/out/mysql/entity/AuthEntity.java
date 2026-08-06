@@ -16,7 +16,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -26,7 +25,6 @@ import java.time.LocalDate;
 
 /** auth 테이블 — auth_id(PK) 내부용, 외부 식별자는 auth_uuid. CI는 identity_verifications에만 저장 */
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 @Entity
@@ -101,6 +99,27 @@ public class AuthEntity {
     ) {
         this.authUuid = authUuid;
         this.loginId = loginId;
+        this.memberName = memberName;
+        this.birthdayDate = birthdayDate;
+        this.phoneNumber = phoneNumber;
+        this.gender = gender;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.passwordChangedAt = passwordChangedAt;
+        this.memberStatus = memberStatus;
+    }
+
+    /** authUuid·loginId 등 불변 필드는 갱신하지 않음 */
+    public void updateProfile(
+            String memberName,
+            LocalDate birthdayDate,
+            String phoneNumber,
+            Gender gender,
+            String email,
+            String passwordHash,
+            Instant passwordChangedAt,
+            MemberStatus memberStatus
+    ) {
         this.memberName = memberName;
         this.birthdayDate = birthdayDate;
         this.phoneNumber = phoneNumber;

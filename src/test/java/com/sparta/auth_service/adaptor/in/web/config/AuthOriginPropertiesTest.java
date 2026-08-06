@@ -11,10 +11,7 @@ class AuthOriginPropertiesTest {
 
     @Test
     void allowsNormalizedOriginMatch() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(true);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", true);
 
         assertThat(properties.isAllowed("HTTP://LOCALHOST:3000")).isTrue();
         assertThat(properties.isAllowed("http://evil.example.com")).isFalse();
@@ -22,10 +19,7 @@ class AuthOriginPropertiesTest {
 
     @Test
     void rejectsMissingOriginWhenRequired() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(true);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", true);
 
         assertThat(properties.isAllowed(null)).isFalse();
         assertThat(properties.isAllowed("")).isFalse();
@@ -34,40 +28,28 @@ class AuthOriginPropertiesTest {
 
     @Test
     void allowsMissingOriginWhenNotRequired() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(false);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", false);
 
         assertThat(properties.isAllowed(null)).isTrue();
     }
 
     @Test
     void rejectsMalformedRequestOrigin() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000");
-        properties.setRequireOrigin(true);
-        properties.initializeAllowedOrigins();
+        AuthOriginProperties properties = new AuthOriginProperties("http://localhost:3000", true);
 
         assertThat(properties.isAllowed("https://localhost:3000/evil")).isFalse();
     }
 
     @Test
     void rejectsDuplicateConfiguredOrigins() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000,http://localhost:3000");
-
-        assertThatThrownBy(properties::initializeAllowedOrigins)
+        assertThatThrownBy(() -> new AuthOriginProperties("http://localhost:3000,http://localhost:3000", true))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("duplicates");
     }
 
     @Test
     void rejectsBlankConfiguredEntries() {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins("http://localhost:3000,,http://127.0.0.1:3000");
-
-        assertThatThrownBy(properties::initializeAllowedOrigins)
+        assertThatThrownBy(() -> new AuthOriginProperties("http://localhost:3000,,http://127.0.0.1:3000", true))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("blank entries");
     }
@@ -78,10 +60,7 @@ class AuthOriginPropertiesTest {
             "https://example.com/path"
     })
     void rejectsInvalidConfiguredOrigins(String allowedOrigins) {
-        AuthOriginProperties properties = new AuthOriginProperties();
-        properties.setAllowedOrigins(allowedOrigins);
-
-        assertThatThrownBy(properties::initializeAllowedOrigins)
+        assertThatThrownBy(() -> new AuthOriginProperties(allowedOrigins, true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

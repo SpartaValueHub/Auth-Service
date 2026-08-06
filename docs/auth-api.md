@@ -239,14 +239,36 @@ Body 없음. `vh_refresh_token` Cookie 필수. 브라우저/BFF는 `Origin` 헤�
 
 | status | code | 의미 |
 |--------|------|------|
-| 401 | INVALID_TOKEN | refresh 무효/만료/Redis rotation 실패 (jti 불일치·키 없음·동시 refresh 패배) |
+| 401 | INVALID_TOKEN | refresh 무효/만료·JWT 파싱 실패·Redis 키 없음·동시 refresh 패배 |
+| 401 | AUTH_SESSION_TERMINATED | 다른 기기 로그인으로 refresh jti 덮어쓰기 — access Cookie jti가 blacklist에 등록된 경우 |
 | 403 | AUTH_MEMBER_NOT_ACTIVE | member_status ≠ ACTIVE — refresh·active Redis 삭제, access blacklist |
 | 403 | AUTH_FORBIDDEN_ORIGIN | Origin 누락/허용 목록 외 |
+
+401 `AUTH_SESSION_TERMINATED` 응답 예시:
+
+```json
+{
+  "timestamp": "2026-08-04T08:00:00Z",
+  "status": 401,
+  "code": "AUTH_SESSION_TERMINATED",
+  "message": "다른 기기에서 로그인하여 현재 세션이 종료되었습니다.",
+  "path": "/api/v1/auth/refresh"
+}
+```
+
+**Refresh rotation 실패 판별**
+
+| 상황 | code |
+|------|------|
+| refresh JWT 만료·파싱 실패 | `INVALID_TOKEN` |
+| Redis `auth:refresh:{authUuid}` 키 없음 (로그아웃·TTL 만료) | `INVALID_TOKEN` |
+| Redis jti 불일치 + access Cookie jti blacklist | `AUTH_SESSION_TERMINATED` (다른 기기 sign-in) |
+| Redis jti 불일치 + access 미 blacklist | `INVALID_TOKEN` (동시 refresh 패배 등) |
 
 **Refresh reuse 감지 범위**
 
 - 동시에 같은 refresh token으로 갱신 요청 시 Lua atomic rotate로 **1건만 성공**
-- 이미 rotation된 구 refresh token 재사용 시 Redis jti 불일치로 **401 INVALID_TOKEN**
+- 이미 rotation된 구 refresh token 재사용 시 Redis jti 불일치 → **401 INVALID_TOKEN** (access blacklist 없음)
 - token-family theft detection(구 refresh 재사용 시 계정 전체 세션 revoke 등)은 **이번 범위 미포함**
 
 ---
@@ -267,6 +289,8 @@ Body 없음. `vh_access_token`·`vh_refresh_token` Cookie에서 토큰 읽음. p
 
 Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{authUuid}` 삭제
 
+이미 무효화·만료된 토큰으로 호출해도 **204** (best-effort idempotent).
+
 ### Errors
 
 | status | code | 의미 |
@@ -279,6 +303,30 @@ Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{a
 - 허용 값: `http(s)://host` 또는 `http(s)://host:port` exact match (정규화 후 scheme·host·effective port 비교)
 - prod allowlist에 `localhost`/`127.0.0.1`·`*`·path/query 포함 Origin 불가
 - Referer fallback 없음 — `Origin` 헤더만 검증
+
+---
+
+## 세션 유효성 확인
+
+### Summary
+Gateway JWT·access blacklist 통과 여부만 확인 (read-only). ValueHub-FO duplicate login polling용.
+
+### Method · Path
+`GET /api/v1/auth/session`
+
+### Auth
+Gateway JWT — Access Token HttpOnly Cookie
+
+### Response
+`204 No Content` — 세션 유효
+
+응답 헤더: `Cache-Control: no-store`
+
+### Errors
+
+| status | code | 의미 |
+|--------|------|------|
+| 401 | AUTH_SESSION_TERMINATED | 다른 기기 로그인 등으로 access jti blacklist |
 
 ---
 

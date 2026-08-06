@@ -13,6 +13,7 @@ import com.sparta.auth_service.application.exception.IdentityVerificationNotRead
 import com.sparta.auth_service.application.exception.InvalidTokenException;
 import com.sparta.auth_service.application.exception.LoginRateLimitedException;
 import com.sparta.auth_service.application.exception.MemberNotActiveException;
+import com.sparta.auth_service.application.exception.SessionTerminatedException;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
@@ -37,6 +38,7 @@ import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
+import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
 import com.sparta.auth_service.application.support.TokenTtlCalculator;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.model.AuthDomain;
@@ -173,11 +175,11 @@ public class AuthService implements AuthUseCase {
     @Override
     @Transactional
     public AuthSignInResultDto refresh(AuthRefreshRequestDto requestDto) {
-        if (requestDto.getRefreshToken() == null || requestDto.getRefreshToken().isBlank()) {
+        if (requestDto.refreshToken() == null || requestDto.refreshToken().isBlank()) {
             throw new InvalidTokenException("refreshToken은 필수입니다.");
         }
 
-        ParsedTokenDto parsed = tokenProviderPort.parseRefreshToken(requestDto.getRefreshToken().trim());
+        ParsedTokenDto parsed = tokenProviderPort.parseRefreshToken(requestDto.refreshToken().trim());
 
         AuthDomain auth = authRepositoryPort.findByAuthUuid(parsed.getAuthUuid())
                 .orElseThrow(() -> new InvalidTokenException("유효하지 않은 refresh token입니다."));
@@ -193,13 +195,14 @@ public class AuthService implements AuthUseCase {
         ParsedTokenDto parsedRefresh = tokenProviderPort.parseRefreshToken(refreshToken);
 
         long refreshTtlSeconds = remainingTtlSeconds(parsedRefresh.getExpiresAt());
-        if (!refreshTokenPort.rotate(
+        RefreshTokenRotationResult rotationResult = refreshTokenPort.rotate(
                 parsed.getAuthUuid(),
                 parsed.getTokenId(),
                 parsedRefresh.getTokenId(),
                 refreshTtlSeconds
-        )) {
-            throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
+        );
+        if (rotationResult != RefreshTokenRotationResult.SUCCESS) {
+            handleRefreshRotationFailure(rotationResult, requestDto.accessToken());
         }
 
         saveActiveAccessToken(parsed.getAuthUuid(), parsedAccess.getTokenId(), parsedAccess.getExpiresAt());
@@ -216,22 +219,23 @@ public class AuthService implements AuthUseCase {
     @Override
     @Transactional
     public void logout(AuthLogoutRequestDto requestDto) {
-        String authUuid = null;
-
         if (requestDto.getRefreshToken() != null && !requestDto.getRefreshToken().isBlank()) {
-            ParsedTokenDto refresh = tokenProviderPort.parseRefreshToken(requestDto.getRefreshToken().trim());
-            authUuid = refresh.getAuthUuid();
-            refreshTokenPort.delete(authUuid);
+            try {
+                ParsedTokenDto refresh = tokenProviderPort.parseRefreshToken(requestDto.getRefreshToken().trim());
+                refreshTokenPort.deleteIfMatches(refresh.getAuthUuid(), refresh.getTokenId());
+            } catch (InvalidTokenException ex) {
+                // 이미 무효화·만료 refresh — best-effort logout
+            }
         }
 
         if (requestDto.getAccessToken() != null && !requestDto.getAccessToken().isBlank()) {
-            ParsedTokenDto access = tokenProviderPort.parseAccessToken(requestDto.getAccessToken().trim());
-            authUuid = access.getAuthUuid();
-            blacklistAccessToken(access.getTokenId(), access.getExpiresAt());
-        }
-
-        if (authUuid != null) {
-            activeAccessTokenPort.delete(authUuid);
+            try {
+                ParsedTokenDto access = tokenProviderPort.parseAccessToken(requestDto.getAccessToken().trim());
+                blacklistAccessToken(access.getTokenId(), access.getExpiresAt());
+                activeAccessTokenPort.deleteIfMatches(access.getAuthUuid(), access.getTokenId());
+            } catch (InvalidTokenException ex) {
+                // 이미 무효화·만료 access — best-effort logout
+            }
         }
     }
 
@@ -295,6 +299,28 @@ public class AuthService implements AuthUseCase {
     private void blacklistAccessToken(String tokenId, Instant expiresAt) {
         long ttlSeconds = remainingTtlSeconds(expiresAt);
         accessTokenBlacklistPort.blacklist(tokenId, ttlSeconds);
+    }
+
+    private void handleRefreshRotationFailure(RefreshTokenRotationResult rotationResult, String accessToken) {
+        if (rotationResult == RefreshTokenRotationResult.KEY_NOT_FOUND) {
+            throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
+        }
+        if (rotationResult == RefreshTokenRotationResult.JTI_MISMATCH && isAccessTokenBlacklisted(accessToken)) {
+            throw new SessionTerminatedException("다른 기기에서 로그인하여 현재 세션이 종료되었습니다.");
+        }
+        throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
+    }
+
+    private boolean isAccessTokenBlacklisted(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            return false;
+        }
+        try {
+            ParsedTokenDto parsedAccess = tokenProviderPort.parseAccessToken(accessToken.trim());
+            return accessTokenBlacklistPort.isBlacklisted(parsedAccess.getTokenId());
+        } catch (InvalidTokenException ex) {
+            return false;
+        }
     }
 
     private void revokeSessionForInactiveAccount(String authUuid) {

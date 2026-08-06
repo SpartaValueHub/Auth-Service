@@ -8,6 +8,8 @@ import com.sparta.auth_service.adaptor.out.security.JwtProperties;
 
 import com.sparta.auth_service.application.exception.InvalidTokenException;
 
+import com.sparta.auth_service.application.exception.SessionTerminatedException;
+
 import com.sparta.auth_service.application.exception.MemberNotActiveException;
 import com.sparta.auth_service.application.exception.SecurityStoreUnavailableException;
 
@@ -42,6 +44,8 @@ import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
+
+import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
 
 import com.sparta.auth_service.domain.enums.Gender;
 
@@ -282,11 +286,12 @@ class AuthServiceRefreshLogoutTest {
 
         );
 
-        when(refreshTokenPort.rotate(eq("uuid-001"), eq("old-jti"), eq("new-jti"), any(Long.class))).thenReturn(true);
+        when(refreshTokenPort.rotate(eq("uuid-001"), eq("old-jti"), eq("new-jti"), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.SUCCESS);
 
 
 
-        authService.refresh(AuthRefreshRequestDto.builder().refreshToken("old-refresh").build());
+        authService.refresh(new AuthRefreshRequestDto("old-refresh", null));
 
 
 
@@ -364,11 +369,12 @@ class AuthServiceRefreshLogoutTest {
 
         );
 
-        when(refreshTokenPort.rotate(eq("uuid-001"), eq("old-jti"), eq("new-jti"), any(Long.class))).thenReturn(true);
+        when(refreshTokenPort.rotate(eq("uuid-001"), eq("old-jti"), eq("new-jti"), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.SUCCESS);
 
 
 
-        var result = authService.refresh(AuthRefreshRequestDto.builder().refreshToken("old-refresh").build());
+        var result = authService.refresh(new AuthRefreshRequestDto("old-refresh", null));
 
 
 
@@ -448,13 +454,82 @@ class AuthServiceRefreshLogoutTest {
 
         );
 
-        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class))).thenReturn(false);
+        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.JTI_MISMATCH);
 
 
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("old-refresh").build()
+                new AuthRefreshRequestDto("old-refresh", null)
+
+        )).isInstanceOf(InvalidTokenException.class);
+
+
+
+        verify(activeAccessTokenPort, never()).save(any(), any(), any(Long.class));
+
+    }
+
+
+
+    @Test
+
+    void refresh_throwsSessionTerminatedWhenJtiMismatchAndAccessBlacklisted() {
+
+        stubRefreshTokenCreationMocks();
+
+        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.JTI_MISMATCH);
+
+        when(tokenProviderPort.parseAccessToken("old-access")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("old-access-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("access")
+
+                        .expiresAt(FIXED_NOW.plus(15, ChronoUnit.MINUTES))
+
+                        .build()
+
+        );
+
+        when(accessTokenBlacklistPort.isBlacklisted("old-access-jti")).thenReturn(true);
+
+
+
+        assertThatThrownBy(() -> authService.refresh(
+
+                new AuthRefreshRequestDto("old-refresh", "old-access")
+
+        )).isInstanceOf(SessionTerminatedException.class);
+
+
+
+        verify(activeAccessTokenPort, never()).save(any(), any(), any(Long.class));
+
+    }
+
+
+
+    @Test
+
+    void refresh_throwsInvalidTokenWhenRedisRefreshKeyMissing() {
+
+        stubRefreshTokenCreationMocks();
+
+        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.KEY_NOT_FOUND);
+
+
+
+        assertThatThrownBy(() -> authService.refresh(
+
+                new AuthRefreshRequestDto("old-refresh", null)
 
         )).isInstanceOf(InvalidTokenException.class);
 
@@ -496,7 +571,7 @@ class AuthServiceRefreshLogoutTest {
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("refresh").build()
+                new AuthRefreshRequestDto("refresh", null)
 
         )).isInstanceOf(MemberNotActiveException.class);
 
@@ -556,7 +631,7 @@ class AuthServiceRefreshLogoutTest {
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("refresh").build()
+                new AuthRefreshRequestDto("refresh", null)
 
         )).isInstanceOf(MemberNotActiveException.class);
 
@@ -602,7 +677,7 @@ class AuthServiceRefreshLogoutTest {
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("refresh").build()
+                new AuthRefreshRequestDto("refresh", null)
 
         )).isInstanceOf(MemberNotActiveException.class);
 
@@ -652,7 +727,7 @@ class AuthServiceRefreshLogoutTest {
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("refresh").build()
+                new AuthRefreshRequestDto("refresh", null)
 
         )).isInstanceOf(MemberNotActiveException.class);
 
@@ -672,7 +747,7 @@ class AuthServiceRefreshLogoutTest {
 
     void refresh_throwsWhenRefreshTokenMissing() {
 
-        assertThatThrownBy(() -> authService.refresh(AuthRefreshRequestDto.builder().refreshToken("").build()))
+        assertThatThrownBy(() -> authService.refresh(new AuthRefreshRequestDto("", null)))
 
                 .isInstanceOf(InvalidTokenException.class);
 
@@ -730,11 +805,11 @@ class AuthServiceRefreshLogoutTest {
 
 
 
-        verify(refreshTokenPort).delete("uuid-001");
+        verify(refreshTokenPort).deleteIfMatches("uuid-001", "refresh-jti");
 
         verify(accessTokenBlacklistPort).blacklist(eq("access-jti"), any(Long.class));
 
-        verify(activeAccessTokenPort).delete("uuid-001");
+        verify(activeAccessTokenPort).deleteIfMatches("uuid-001", "access-jti");
 
     }
 
@@ -812,7 +887,7 @@ class AuthServiceRefreshLogoutTest {
 
         assertThatThrownBy(() -> authService.refresh(
 
-                AuthRefreshRequestDto.builder().refreshToken("refresh").build()
+                new AuthRefreshRequestDto("refresh", null)
 
         )).isInstanceOf(SecurityStoreUnavailableException.class)
 
@@ -962,11 +1037,12 @@ class AuthServiceRefreshLogoutTest {
 
         );
 
-        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class))).thenReturn(true);
+        when(refreshTokenPort.rotate(any(), any(), any(), any(Long.class)))
+                .thenReturn(RefreshTokenRotationResult.SUCCESS);
 
 
 
-        authService.refresh(AuthRefreshRequestDto.builder().refreshToken("old-refresh").build());
+        authService.refresh(new AuthRefreshRequestDto("old-refresh", null));
 
 
 
@@ -1016,7 +1092,143 @@ class AuthServiceRefreshLogoutTest {
 
         verify(accessTokenBlacklistPort).blacklist("access-jti", 0L);
 
-        verify(activeAccessTokenPort).delete("uuid-001");
+        verify(activeAccessTokenPort).deleteIfMatches("uuid-001", "access-jti");
+
+    }
+
+
+
+    @Test
+
+    void logout_doesNotDeleteLatestSessionKeysWhenTokensAreStale() {
+
+        Instant expiresAt = FIXED_NOW.plus(10, ChronoUnit.MINUTES);
+
+        when(tokenProviderPort.parseRefreshToken("stale-refresh")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("stale-refresh-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("refresh")
+
+                        .expiresAt(expiresAt)
+
+                        .build()
+
+        );
+
+        when(tokenProviderPort.parseAccessToken("stale-access")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("stale-access-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("access")
+
+                        .expiresAt(expiresAt)
+
+                        .build()
+
+        );
+
+        when(refreshTokenPort.deleteIfMatches("uuid-001", "stale-refresh-jti")).thenReturn(false);
+
+        when(activeAccessTokenPort.deleteIfMatches("uuid-001", "stale-access-jti")).thenReturn(false);
+
+
+
+        authService.logout(AuthLogoutRequestDto.builder()
+
+                .accessToken("stale-access")
+
+                .refreshToken("stale-refresh")
+
+                .build());
+
+
+
+        verify(refreshTokenPort).deleteIfMatches("uuid-001", "stale-refresh-jti");
+
+        verify(accessTokenBlacklistPort).blacklist(eq("stale-access-jti"), any(Long.class));
+
+        verify(activeAccessTokenPort).deleteIfMatches("uuid-001", "stale-access-jti");
+
+        verify(refreshTokenPort, never()).delete(any());
+
+        verify(activeAccessTokenPort, never()).delete(any());
+
+    }
+
+
+
+    @Test
+
+    void logout_deletesSessionKeysWhenTokensMatchCurrentRedisState() {
+
+        Instant expiresAt = FIXED_NOW.plus(10, ChronoUnit.MINUTES);
+
+        when(tokenProviderPort.parseRefreshToken("current-refresh")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("current-refresh-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("refresh")
+
+                        .expiresAt(expiresAt)
+
+                        .build()
+
+        );
+
+        when(tokenProviderPort.parseAccessToken("current-access")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("current-access-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("access")
+
+                        .expiresAt(expiresAt)
+
+                        .build()
+
+        );
+
+        when(refreshTokenPort.deleteIfMatches("uuid-001", "current-refresh-jti")).thenReturn(true);
+
+        when(activeAccessTokenPort.deleteIfMatches("uuid-001", "current-access-jti")).thenReturn(true);
+
+
+
+        authService.logout(AuthLogoutRequestDto.builder()
+
+                .accessToken("current-access")
+
+                .refreshToken("current-refresh")
+
+                .build());
+
+
+
+        verify(refreshTokenPort).deleteIfMatches("uuid-001", "current-refresh-jti");
+
+        verify(accessTokenBlacklistPort).blacklist(eq("current-access-jti"), any(Long.class));
+
+        verify(activeAccessTokenPort).deleteIfMatches("uuid-001", "current-access-jti");
+
+        verify(refreshTokenPort, never()).delete(any());
+
+        verify(activeAccessTokenPort, never()).delete(any());
 
     }
 
@@ -1177,6 +1389,66 @@ class AuthServiceRefreshLogoutTest {
         verify(refreshTokenPort).save(eq("uuid-001"), eq("new-refresh-jti"), refreshTtlCaptor.capture());
 
         assertThat(refreshTtlCaptor.getValue()).isEqualTo(2L);
+
+    }
+
+
+
+    private void stubRefreshTokenCreationMocks() {
+
+        when(tokenProviderPort.parseRefreshToken("old-refresh")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("old-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("refresh")
+
+                        .expiresAt(FIXED_NOW.plus(1, ChronoUnit.DAYS))
+
+                        .build()
+
+        );
+
+        when(authRepositoryPort.findByAuthUuid("uuid-001")).thenReturn(Optional.of(auth()));
+
+        when(tokenProviderPort.createAccessToken("uuid-001")).thenReturn("new-access");
+
+        when(tokenProviderPort.createRefreshToken("uuid-001")).thenReturn("new-refresh");
+
+        when(tokenProviderPort.parseAccessToken("new-access")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("new-access-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("access")
+
+                        .expiresAt(FIXED_NOW.plus(15, ChronoUnit.MINUTES))
+
+                        .build()
+
+        );
+
+        when(tokenProviderPort.parseRefreshToken("new-refresh")).thenReturn(
+
+                ParsedTokenDto.builder()
+
+                        .tokenId("new-jti")
+
+                        .authUuid("uuid-001")
+
+                        .tokenType("refresh")
+
+                        .expiresAt(FIXED_NOW.plus(14, ChronoUnit.DAYS))
+
+                        .build()
+
+        );
 
     }
 

@@ -31,8 +31,12 @@ class CaptchaPropertiesValidationTest {
     @ParameterizedTest
     @ValueSource(ints = {0, -1})
     void rejectsInvalidChallengeMaxAgeSeconds(int value) {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.getRecaptcha().setChallengeMaxAgeSeconds(value);
+        CaptchaProperties properties = new CaptchaProperties(
+                true,
+                2000,
+                3000,
+                new CaptchaProperties.Recaptcha("", "localhost", value)
+        );
 
         assertThat(VALIDATOR.validate(properties)).isNotEmpty();
     }
@@ -40,8 +44,12 @@ class CaptchaPropertiesValidationTest {
     @ParameterizedTest
     @ValueSource(ints = {0, -1})
     void rejectsInvalidConnectTimeoutMillis(int value) {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.setConnectTimeoutMillis(value);
+        CaptchaProperties properties = new CaptchaProperties(
+                true,
+                value,
+                3000,
+                new CaptchaProperties.Recaptcha("", "localhost", 120)
+        );
 
         assertThat(VALIDATOR.validate(properties)).isNotEmpty();
     }
@@ -49,8 +57,12 @@ class CaptchaPropertiesValidationTest {
     @ParameterizedTest
     @ValueSource(ints = {0, -1})
     void rejectsInvalidReadTimeoutMillis(int value) {
-        CaptchaProperties properties = new CaptchaProperties();
-        properties.setReadTimeoutMillis(value);
+        CaptchaProperties properties = new CaptchaProperties(
+                true,
+                2000,
+                value,
+                new CaptchaProperties.Recaptcha("", "localhost", 120)
+        );
 
         assertThat(VALIDATOR.validate(properties)).isNotEmpty();
     }
