@@ -101,12 +101,19 @@ auth 계정은 있으나 member 프로필 생성이 끝나지 않은 경우, 로
 
 ### Errors
 
+로그인과 동일한 보안 정책(실패 누적·CAPTCHA·잠금·IP rate limit)을 적용합니다.
+비밀번호·계정 존재 여부는 일반 로그인과 같은 메시지로 처리합니다.
+
 | status | code | 의미 |
 |--------|------|------|
-| 401 | AUTH_UNAUTHORIZED | 아이디/비밀번호 오류 |
-| 403 | AUTH_CAPTCHA_REQUIRED | captcha 필요 |
-| 400 | AUTH_CAPTCHA_INVALID | captcha 실패 |
-| 503 | AUTH_SECURITY_STORE_UNAVAILABLE | Redis security store 장애 |
+| 401 | AUTH_UNAUTHORIZED | 아이디/비밀번호 오류 (1~4회 실패) |
+| 403 | AUTH_CAPTCHA_REQUIRED | 5번째 실패 직후 또는 fail count ≥ 5 — captcha 필요 |
+| 400 | AUTH_CAPTCHA_INVALID | captcha 누락/실패 — fail count 증가 없음 |
+| 503 | AUTH_CAPTCHA_PROVIDER_UNAVAILABLE | Google siteverify 제공자 장애 — fail count 증가·잠금 없음 |
+| 503 | AUTH_SECURITY_STORE_UNAVAILABLE | Redis security store 장애 — Retry-After 포함 |
+| 423 | AUTH_ACCOUNT_LOCKED | 계정 잠금. `Retry-After`·`retryAfterSeconds` 포함 |
+| 429 | AUTH_RATE_LIMITED | IP rate limit 초과. `Retry-After`·`retryAfterSeconds` 포함 |
+| 403 | AUTH_MEMBER_NOT_ACTIVE | 비활성 계정 |
 
 ---
 
