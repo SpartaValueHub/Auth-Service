@@ -45,6 +45,7 @@ springdoc:
 jwt:
   access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
   refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:14}
+  signup-completion-token-seconds: ${AUTH_SIGNUP_COMPLETION_TOKEN_SECONDS:120}
   private-key: ${JWT_PRIVATE_KEY:}
   private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
 
@@ -91,3 +92,8 @@ captcha:
     secret-key: ${RECAPTCHA_SECRET_KEY:}
     allowed-hostnames: ${AUTH_CAPTCHA_ALLOWED_HOSTNAMES:localhost,127.0.0.1}
     challenge-max-age-seconds: ${AUTH_CAPTCHA_CHALLENGE_MAX_AGE_SECONDS:120}
+
+# RestClient DEBUG는 form body의 CAPTCHA secret/token을 출력할 수 있으므로 전 환경에서 차단한다.
+logging:
+  level:
+    org.springframework.web.client.DefaultRestClient: INFO

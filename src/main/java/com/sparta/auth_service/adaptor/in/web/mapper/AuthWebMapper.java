@@ -5,11 +5,15 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeRequestVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 import org.springframework.stereotype.Component;
 
 /** VO ↔ Input DTO 변환 — sign-up은 requestToken·loginId·password·email만 전달 */
@@ -27,6 +31,7 @@ public class AuthWebMapper {
 
     public AuthSignUpResponseVo toVo(AuthSignUpResultDto dto) {
         return AuthSignUpResponseVo.builder()
+                .signupCompletionToken(dto.getSignupCompletionToken())
                 .authUuid(dto.getAuthUuid())
                 .logInId(dto.getLoginId())
                 .email(dto.getEmail())
@@ -41,6 +46,22 @@ public class AuthWebMapper {
                 .password(vo.getPassword())
                 .captchaToken(vo.getCaptchaToken())
                 .clientIp(clientIp)
+                .build();
+    }
+
+    public AuthSignUpResumeRequestDto toDto(AuthSignUpResumeRequestVo vo, String clientIp) {
+        return AuthSignUpResumeRequestDto.builder()
+                .loginId(vo.getLogInId())
+                .password(vo.getPassword())
+                .captchaToken(vo.getCaptchaToken())
+                .clientIp(clientIp)
+                .build();
+    }
+
+    public AuthSignUpResumeResponseVo toVo(AuthSignUpResumeResultDto dto) {
+        return AuthSignUpResumeResponseVo.builder()
+                .authUuid(dto.getAuthUuid())
+                .signupCompletionToken(dto.getSignupCompletionToken())
                 .build();
     }
 

@@ -66,6 +66,21 @@ public class JwtTokenProvider implements TokenProviderPort {
     }
 
     @Override
+    public String createSignupCompletionToken(String authUuid) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + properties.getSignupCompletionTokenSeconds() * 1_000L);
+        return Jwts.builder()
+                .setId(UUID.randomUUID().toString())
+                .setSubject(authUuid)
+                .claim("tokenType", "SIGNUP_COMPLETION")
+                .claim("purpose", "MEMBER_PROFILE_CREATE")
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(privateKey, SignatureAlgorithm.RS256)
+                .compact();
+    }
+
+    @Override
     public ParsedTokenDto parseRefreshToken(String refreshToken) {
         try {
             Jws<Claims> parsed = Jwts.parserBuilder()
@@ -111,6 +126,29 @@ public class JwtTokenProvider implements TokenProviderPort {
             throw ex;
         } catch (Exception ex) {
             throw new InvalidTokenException("유효하지 않은 access token입니다.");
+        }
+    }
+
+
+    @Override
+    public ParsedTokenDto parseSignupCompletionToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder().setSigningKey(privateKey).build()
+                    .parseClaimsJws(token).getBody();
+            if (!"SIGNUP_COMPLETION".equals(claims.get("tokenType", String.class))
+                    || !"MEMBER_PROFILE_CREATE".equals(claims.get("purpose", String.class))) {
+                throw new InvalidTokenException("유효하지 않은 가입 완료 토큰입니다.");
+            }
+            return ParsedTokenDto.builder()
+                    .tokenId(claims.getId())
+                    .authUuid(claims.getSubject())
+                    .tokenType("SIGNUP_COMPLETION")
+                    .expiresAt(claims.getExpiration().toInstant())
+                    .build();
+        } catch (InvalidTokenException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new InvalidTokenException("유효하지 않은 가입 완료 토큰입니다.");
         }
     }
 }

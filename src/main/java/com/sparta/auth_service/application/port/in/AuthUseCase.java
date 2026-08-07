@@ -7,6 +7,8 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 
 /**
  * 인증 Input Port — HTTP·상태코드 없음.
@@ -15,6 +17,8 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 public interface AuthUseCase {
 
     AuthSignUpResultDto signUp(AuthSignUpRequestDto authSignUpRequestDto);
+
+    AuthSignUpResumeResultDto resumeSignUp(AuthSignUpResumeRequestDto requestDto);
 
     AuthSignInResultDto signIn(AuthSignInRequestDto authSignInRequestDto);
 

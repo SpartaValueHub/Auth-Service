@@ -47,6 +47,7 @@
 
 | 필드 | 타입 |
 |------|------|
+| signupCompletionToken | string (member 프로필 생성 전용 단기 토큰) |
 | authUuid | string |
 | logInId | string |
 | email | string |
@@ -62,6 +63,50 @@
 | 404 | IDENTITY_VERIFICATION_NOT_FOUND | 이력/PortOne 조회 실패 |
 | 409 | AUTH_DUPLICATE_* | 중복 (loginId/email/phone/ci_hash 가입 이력) |
 | 500 | INTERNAL_ERROR | 알 수 없는 DB 무결성 오류 (NOT NULL·FK 등) |
+
+---
+
+## 회원가입 재개 (completion token 재발급)
+
+### Summary
+auth 계정은 있으나 member 프로필 생성이 끝나지 않은 경우, 로그인 자격증명으로 signup completion token을 다시 발급합니다.
+
+### Method · Path
+`POST /api/v1/auth/sign-up/resume`
+
+### Auth
+불필요 (Gateway public — signup completion 경로)
+
+### Request (Body)
+
+| 필드 | 타입 | 필수 | 제약 |
+|------|------|------|------|
+| logInId | string | O | |
+| password | string | O | |
+| captchaToken | string | △ | 로그인과 동일 — 실패 누적 시 필요 |
+
+```json
+{
+  "logInId": "user01",
+  "password": "Password1!"
+}
+```
+
+### Response (200)
+
+| 필드 | 타입 |
+|------|------|
+| authUuid | string |
+| signupCompletionToken | string |
+
+### Errors
+
+| status | code | 의미 |
+|--------|------|------|
+| 401 | AUTH_UNAUTHORIZED | 아이디/비밀번호 오류 |
+| 403 | AUTH_CAPTCHA_REQUIRED | captcha 필요 |
+| 400 | AUTH_CAPTCHA_INVALID | captcha 실패 |
+| 503 | AUTH_SECURITY_STORE_UNAVAILABLE | Redis security store 장애 |
 
 ---
 

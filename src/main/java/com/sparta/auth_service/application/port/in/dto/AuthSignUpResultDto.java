@@ -10,6 +10,8 @@ import java.time.LocalDate;
 @Builder
 public class AuthSignUpResultDto {
 
+    private final String signupCompletionToken;
+
     private final String authUuid;
     private final String loginId;
     private final String email;

@@ -9,7 +9,11 @@ public interface TokenProviderPort {
 
     String createRefreshToken(String authUuid);
 
+    String createSignupCompletionToken(String authUuid);
+
     ParsedTokenDto parseRefreshToken(String refreshToken);
 
     ParsedTokenDto parseAccessToken(String accessToken);
+
+    ParsedTokenDto parseSignupCompletionToken(String token);
 }
