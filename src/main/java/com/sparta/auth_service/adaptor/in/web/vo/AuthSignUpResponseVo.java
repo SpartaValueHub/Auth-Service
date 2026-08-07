@@ -12,6 +12,9 @@ import java.time.LocalDate;
 @Schema(description = "회원가입 응답")
 public class AuthSignUpResponseVo {
 
+    @Schema(description = "member 프로필 생성 전용 단기 토큰", accessMode = Schema.AccessMode.READ_ONLY)
+    private String signupCompletionToken;
+
     @Schema(description = "인증 UUID", example = "550e8400-e29b-41d4-a716-446655440000")
     private String authUuid;
 

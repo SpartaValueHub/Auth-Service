@@ -10,6 +10,7 @@ import com.sparta.auth_service.application.exception.SecurityStoreUnavailableExc
 import com.sparta.auth_service.application.exception.LoginRateLimitedException;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.out.AccessTokenBlacklistPort;
 import com.sparta.auth_service.application.port.out.ActiveAccessTokenPort;
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
@@ -23,6 +24,7 @@ import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
+import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.MemberStatus;
@@ -89,6 +91,9 @@ class AuthServiceSignInTest {
 
     @Mock
     private IdentityKeyHashPort identityKeyHashPort;
+
+    @Mock
+    private SignupCompletionTokenPort signupCompletionTokenPort;
 
     @Mock
     private JwtProperties jwtProperties;
@@ -463,6 +468,34 @@ class AuthServiceSignInTest {
 
         verify(loginAttemptPort).reset("user01");
         verify(loginAttemptPort, never()).incrementFailCount(any());
+    }
+
+    @Test
+    void resumeSignUpIssuesOnlyCompletionTokenAfterApplyingLoginPolicy() {
+        when(authRepositoryPort.findByLoginId("user01")).thenReturn(Optional.of(activeAuth()));
+        when(passwordEncoderPort.matches("Password1!", PASSWORD_HASH)).thenReturn(true);
+        when(tokenProviderPort.createSignupCompletionToken("uuid-001")).thenReturn("completion-token");
+        when(tokenProviderPort.parseSignupCompletionToken("completion-token")).thenReturn(
+                ParsedTokenDto.builder()
+                        .tokenId("completion-jti")
+                        .authUuid("uuid-001")
+                        .tokenType("SIGNUP_COMPLETION")
+                        .expiresAt(FIXED_NOW.plusSeconds(120))
+                        .build()
+        );
+
+        var result = authService.resumeSignUp(AuthSignUpResumeRequestDto.builder()
+                .loginId("user01")
+                .password("Password1!")
+                .clientIp("203.0.113.10")
+                .build());
+
+        assertThat(result.getAuthUuid()).isEqualTo("uuid-001");
+        assertThat(result.getSignupCompletionToken()).isEqualTo("completion-token");
+        verify(signupCompletionTokenPort).save("uuid-001", "completion-jti", 120L);
+        verify(tokenProviderPort, never()).createAccessToken(any());
+        verify(tokenProviderPort, never()).createRefreshToken(any());
+        verify(loginAttemptPort).reset("user01");
     }
 
     private AuthDomain activeAuth() {

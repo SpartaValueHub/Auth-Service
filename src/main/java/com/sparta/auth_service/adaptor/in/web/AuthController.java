@@ -8,6 +8,8 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeRequestVo;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthLogoutRequestDto;
@@ -16,6 +18,8 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +58,17 @@ public class AuthController {
     public AuthSignUpResponseVo signUp(@RequestBody AuthSignUpRequestVo authSignUpRequestVo) {
         AuthSignUpRequestDto requestDto = authWebMapper.toDto(authSignUpRequestVo);
         AuthSignUpResultDto resultDto = authUseCase.signUp(requestDto);
+        return authWebMapper.toVo(resultDto);
+    }
+
+    @PostMapping("/auth/sign-up/resume")
+    public AuthSignUpResumeResponseVo resumeSignUp(
+            @RequestBody AuthSignUpResumeRequestVo requestVo,
+            HttpServletRequest httpServletRequest
+    ) {
+        String clientIp = clientIpResolver.resolve(httpServletRequest);
+        AuthSignUpResumeRequestDto requestDto = authWebMapper.toDto(requestVo, clientIp);
+        AuthSignUpResumeResultDto resultDto = authUseCase.resumeSignUp(requestDto);
         return authWebMapper.toVo(resultDto);
     }
 

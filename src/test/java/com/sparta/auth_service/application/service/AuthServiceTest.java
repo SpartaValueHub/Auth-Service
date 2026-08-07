@@ -16,6 +16,8 @@ import com.sparta.auth_service.application.port.out.LoginRateLimitPort;
 import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
+import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
+import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.VerificationMethod;
@@ -80,6 +82,9 @@ class AuthServiceTest {
     private IdentityKeyHashPort identityKeyHashPort;
 
     @Mock
+    private SignupCompletionTokenPort signupCompletionTokenPort;
+
+    @Mock
     private JwtProperties jwtProperties;
 
     @Mock
@@ -114,6 +119,14 @@ class AuthServiceTest {
         when(authRepositoryPort.save(any(AuthDomain.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(identityVerificationRepositoryPort.save(any(IdentityVerificationDomain.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tokenProviderPort.createSignupCompletionToken(any())).thenReturn("completion-token");
+        when(tokenProviderPort.parseSignupCompletionToken("completion-token"))
+                .thenReturn(ParsedTokenDto.builder()
+                        .tokenId("completion-jti")
+                        .authUuid("auth-uuid")
+                        .expiresAt(Instant.parse("2026-08-07T00:02:00Z"))
+                        .build());
+        when(clock.instant()).thenReturn(Instant.parse("2026-08-07T00:00:00Z"));
 
         authService.signUp(signUpRequest());
 

@@ -22,15 +22,21 @@ public class JwtProperties {
     @Min(1)
     private final long refreshTokenDays;
 
+    @Min(1)
+    private final long signupCompletionTokenSeconds;
+
     public JwtProperties(
             String privateKey,
             String privateKeyLocation,
             @DefaultValue("15") @Min(1) long accessTokenMinutes,
-            @DefaultValue("14") @Min(1) long refreshTokenDays
+            @DefaultValue("14") @Min(1) long refreshTokenDays,
+            @DefaultValue("120") @Min(1) long signupCompletionTokenSeconds
     ) {
         this.privateKey = privateKey;
         this.privateKeyLocation = privateKeyLocation;
         this.accessTokenMinutes = accessTokenMinutes;
         this.refreshTokenDays = refreshTokenDays;
+        this.signupCompletionTokenSeconds = signupCompletionTokenSeconds;
     }
+
 }

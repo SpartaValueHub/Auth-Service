@@ -22,6 +22,8 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
+import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 import com.sparta.auth_service.application.port.out.AccessTokenBlacklistPort;
 import com.sparta.auth_service.application.port.out.ActiveAccessTokenPort;
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
@@ -35,6 +37,7 @@ import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
+import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
@@ -74,6 +77,7 @@ public class AuthService implements AuthUseCase {
     private final LoginRateLimitPort loginRateLimitPort;
     private final CaptchaVerificationPort captchaVerificationPort;
     private final IdentityKeyHashPort identityKeyHashPort;
+    private final SignupCompletionTokenPort signupCompletionTokenPort;
     private final JwtProperties jwtProperties;
     private final LoginAttemptProperties loginAttemptProperties;
     private final Clock clock;
@@ -123,12 +127,59 @@ public class AuthService implements AuthUseCase {
         AuthDomain saved = authRepositoryPort.save(authDomain);
         identityVerificationRepositoryPort.save(verification.withMemberUuid(saved.getAuthUuid()));
 
+        String completionToken = issueSignupCompletionToken(saved.getAuthUuid());
+
         return AuthSignUpResultDto.builder()
+                .signupCompletionToken(completionToken)
                 .authUuid(saved.getAuthUuid())
                 .loginId(saved.getLoginId())
                 .email(saved.getEmail())
                 .memberName(saved.getMemberName())
                 .birthdayDate(saved.getBirthdayDate())
+                .build();
+    }
+
+    private String issueSignupCompletionToken(String authUuid) {
+        String token = tokenProviderPort.createSignupCompletionToken(authUuid);
+        ParsedTokenDto parsed = tokenProviderPort.parseSignupCompletionToken(token);
+        long ttlSeconds = remainingTtlSeconds(parsed.getExpiresAt());
+        signupCompletionTokenPort.save(authUuid, parsed.getTokenId(), ttlSeconds);
+        return token;
+    }
+
+    @Override
+    @Transactional
+    public AuthSignUpResumeResultDto resumeSignUp(AuthSignUpResumeRequestDto requestDto) {
+        enforceLoginRateLimit(requestDto.getClientIp());
+
+        String loginId = requestDto.getLoginId() == null ? "" : requestDto.getLoginId().trim();
+        String password = requestDto.getPassword();
+        if (loginId.isBlank() || password == null || password.isBlank()) {
+            throw new UnauthorizedException(GENERIC_SIGN_IN_FAILURE);
+        }
+        if (loginAttemptPort.isLocked(loginId)) {
+            throw accountLockedWhileRetrying(loginId);
+        }
+        if (loginAttemptPort.getFailCount(loginId) >= loginAttemptProperties.getCaptchaThreshold()) {
+            requireValidCaptcha(requestDto.getCaptchaToken());
+        }
+
+        AuthDomain auth = authRepositoryPort.findByLoginId(loginId)
+                .orElseGet(() -> {
+                    throwLoginFailure(loginId);
+                    throw new IllegalStateException("unreachable");
+                });
+        if (!auth.isActive()) {
+            throw new MemberNotActiveException("현재 사용할 수 없는 계정입니다.");
+        }
+        if (!passwordEncoderPort.matches(password, auth.getPasswordHash())) {
+            throwLoginFailure(loginId);
+        }
+
+        loginAttemptPort.reset(loginId);
+        return AuthSignUpResumeResultDto.builder()
+                .authUuid(auth.getAuthUuid())
+                .signupCompletionToken(issueSignupCompletionToken(auth.getAuthUuid()))
                 .build();
     }
 

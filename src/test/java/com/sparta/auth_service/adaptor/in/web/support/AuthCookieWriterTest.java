@@ -24,7 +24,7 @@ class AuthCookieWriterTest {
                 "Lax"
         );
 
-        JwtProperties jwtProperties = new JwtProperties(null, null, 15L, 14L);
+        JwtProperties jwtProperties = new JwtProperties(null, null, 15L, 14L, 120L);
 
         authCookieWriter = new AuthCookieWriter(cookieProperties, jwtProperties);
     }
