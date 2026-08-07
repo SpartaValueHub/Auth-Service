@@ -5,7 +5,6 @@ import com.sparta.auth_service.adaptor.out.security.JwtProperties;
 import com.sparta.auth_service.application.exception.AccountLockedException;
 import com.sparta.auth_service.application.exception.CaptchaInvalidException;
 import com.sparta.auth_service.application.exception.CaptchaRequiredException;
-import com.sparta.auth_service.application.exception.DuplicateResourceException;
 import com.sparta.auth_service.application.exception.IdentityVerificationAlreadyUsedException;
 import com.sparta.auth_service.application.exception.IdentityVerificationFailedException;
 import com.sparta.auth_service.application.exception.IdentityVerificationNotFoundException;
@@ -48,6 +47,7 @@ import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -78,12 +78,13 @@ public class AuthService implements AuthUseCase {
     private final CaptchaVerificationPort captchaVerificationPort;
     private final IdentityKeyHashPort identityKeyHashPort;
     private final SignupCompletionTokenPort signupCompletionTokenPort;
+    private final SignupPersistenceService signupPersistenceService;
     private final JwtProperties jwtProperties;
     private final LoginAttemptProperties loginAttemptProperties;
     private final Clock clock;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AuthSignUpResultDto signUp(AuthSignUpRequestDto requestDto) {
         if (requestDto.getRequestToken() == null || requestDto.getRequestToken().isBlank()) {
             throw new IllegalArgumentException("requestToken은 필수입니다.");
@@ -122,10 +123,7 @@ public class AuthService implements AuthUseCase {
                 external.getGender()
         );
 
-        validateDuplication(authDomain, ciHash);
-
-        AuthDomain saved = authRepositoryPort.save(authDomain);
-        identityVerificationRepositoryPort.save(verification.withMemberUuid(saved.getAuthUuid()));
+        AuthDomain saved = signupPersistenceService.persist(requestToken, ciHash, authDomain);
 
         String completionToken = issueSignupCompletionToken(saved.getAuthUuid());
 
@@ -469,21 +467,4 @@ public class AuthService implements AuthUseCase {
         }
     }
 
-    private void validateDuplication(AuthDomain authDomain, String ciHash) {
-        if (authRepositoryPort.existsByLoginId(authDomain.getLoginId())) {
-            throw new DuplicateResourceException("AUTH_DUPLICATE_LOGIN_ID", "이미 사용 중인 loginId입니다.");
-        }
-        if (authRepositoryPort.existsByEmail(authDomain.getEmail())) {
-            throw new DuplicateResourceException("AUTH_DUPLICATE_EMAIL", "이미 사용 중인 email입니다.");
-        }
-        if (authRepositoryPort.existsByPhoneNumber(authDomain.getPhoneNumber())) {
-            throw new DuplicateResourceException("AUTH_DUPLICATE_PHONE", "이미 사용 중인 phoneNumber입니다.");
-        }
-        // existsSignUpLinkedByCiHash는 사전 검사(pre-check)만 수행한다.
-        // ci_hash에 UNIQUE가 없어 동시 가입 요청 간 CI 중복 경쟁 조건(race)을 완전히 막지 못한다.
-        // 완전한 해결에는 CI claim 전용 unique 구조 또는 auth 테이블 CI hash unique 설계가 필요하며, 본 작업 범위 밖이다.
-        if (identityVerificationRepositoryPort.existsSignUpLinkedByCiHash(ciHash)) {
-            throw new DuplicateResourceException("AUTH_DUPLICATE_IDENTITY", "이미 가입된 본인인증 정보입니다.");
-        }
-    }
 }

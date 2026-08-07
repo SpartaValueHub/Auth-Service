@@ -92,6 +92,32 @@ ALTER TABLE identity_verifications
 > **UNIQUE 유지:** `request_token`, `verification_uuid`  
 > **UNIQUE 없음:** `ci_hash` (이력 테이블 — signup·find-id·password-reset 등 재인증 허용)
 
+### 가입 CI 원자적 선점 테이블
+
+`identity_verifications`는 재인증 이력이므로 `ci_hash` 자체를 UNIQUE로 만들지 않는다.
+가입에 실제 사용된 CI는 별도 claim 테이블에서 원자적으로 한 번만 선점한다.
+
+```sql
+CREATE TABLE signup_identity_claims (
+    signup_identity_claim_id BIGINT NOT NULL AUTO_INCREMENT,
+    ci_hash VARCHAR(64) NOT NULL,
+    auth_uuid VARCHAR(36) NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL,
+    PRIMARY KEY (signup_identity_claim_id),
+    CONSTRAINT uk_signup_identity_claim_ci_hash UNIQUE (ci_hash),
+    CONSTRAINT uk_signup_identity_claim_auth_uuid UNIQUE (auth_uuid)
+);
+
+INSERT INTO signup_identity_claims (ci_hash, auth_uuid, created_at)
+SELECT iv.ci_hash, iv.member_uuid, COALESCE(iv.created_at, CURRENT_TIMESTAMP(6))
+FROM identity_verifications iv
+WHERE iv.purpose = 'SIGN_UP'
+  AND iv.member_uuid IS NOT NULL
+  AND iv.ci_hash IS NOT NULL;
+```
+
+운영 `ddl-auto=validate` 환경에서는 애플리케이션 배포 전에 위 스키마와 기존 가입자의 claim을 먼저 반영해야 한다.
+
 ## 3. CI 처리 흐름
 
 ```

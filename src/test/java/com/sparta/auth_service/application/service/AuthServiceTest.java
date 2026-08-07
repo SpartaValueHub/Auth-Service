@@ -85,6 +85,9 @@ class AuthServiceTest {
     private SignupCompletionTokenPort signupCompletionTokenPort;
 
     @Mock
+    private SignupPersistenceService signupPersistenceService;
+
+    @Mock
     private JwtProperties jwtProperties;
 
     @Mock
@@ -116,9 +119,8 @@ class AuthServiceTest {
                 .thenReturn(Optional.of(external));
         when(identityKeyHashPort.hashForLookup("ci-value-001")).thenReturn("ci-hash-001");
         when(passwordEncoderPort.encode("Password1!")).thenReturn("encoded-hash");
-        when(authRepositoryPort.save(any(AuthDomain.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(identityVerificationRepositoryPort.save(any(IdentityVerificationDomain.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(signupPersistenceService.persist(any(), any(), any(AuthDomain.class)))
+                .thenAnswer(invocation -> invocation.getArgument(2));
         when(tokenProviderPort.createSignupCompletionToken(any())).thenReturn("completion-token");
         when(tokenProviderPort.parseSignupCompletionToken("completion-token"))
                 .thenReturn(ParsedTokenDto.builder()
@@ -131,15 +133,15 @@ class AuthServiceTest {
         authService.signUp(signUpRequest());
 
         ArgumentCaptor<AuthDomain> authCaptor = ArgumentCaptor.forClass(AuthDomain.class);
-        verify(authRepositoryPort).save(authCaptor.capture());
+        verify(signupPersistenceService).persist(
+                org.mockito.ArgumentMatchers.eq("verify-001"),
+                org.mockito.ArgumentMatchers.eq("ci-hash-001"),
+                authCaptor.capture()
+        );
         assertThat(authCaptor.getValue().getMemberName()).isEqualTo("홍길동");
         assertThat(authCaptor.getValue().getPasswordHash()).isEqualTo("encoded-hash");
         assertThat(authCaptor.getValue().getMemberStatus()).isNotNull();
 
-        ArgumentCaptor<IdentityVerificationDomain> verificationCaptor =
-                ArgumentCaptor.forClass(IdentityVerificationDomain.class);
-        verify(identityVerificationRepositoryPort).save(verificationCaptor.capture());
-        assertThat(verificationCaptor.getValue().getMemberUuid()).isEqualTo(authCaptor.getValue().getAuthUuid());
     }
 
     @Test
