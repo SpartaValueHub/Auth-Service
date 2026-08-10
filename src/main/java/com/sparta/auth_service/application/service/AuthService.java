@@ -123,12 +123,17 @@ public class AuthService implements AuthUseCase {
                 external.getGender()
         );
 
-        AuthDomain saved = signupPersistenceService.persist(requestToken, ciHash, authDomain);
-
-        String completionToken = issueSignupCompletionToken(saved.getAuthUuid());
+        PreparedSignupCompletionToken preparedToken = prepareSignupCompletionToken(authDomain.getAuthUuid());
+        AuthDomain saved = signupPersistenceService.persist(
+                requestToken,
+                ciHash,
+                authDomain,
+                preparedToken.tokenId(),
+                preparedToken.ttlSeconds()
+        );
 
         return AuthSignUpResultDto.builder()
-                .signupCompletionToken(completionToken)
+                .signupCompletionToken(preparedToken.token())
                 .authUuid(saved.getAuthUuid())
                 .loginId(saved.getLoginId())
                 .email(saved.getEmail())
@@ -138,11 +143,19 @@ public class AuthService implements AuthUseCase {
     }
 
     private String issueSignupCompletionToken(String authUuid) {
+        PreparedSignupCompletionToken prepared = prepareSignupCompletionToken(authUuid);
+        signupCompletionTokenPort.save(authUuid, prepared.tokenId(), prepared.ttlSeconds());
+        return prepared.token();
+    }
+
+    private PreparedSignupCompletionToken prepareSignupCompletionToken(String authUuid) {
         String token = tokenProviderPort.createSignupCompletionToken(authUuid);
         ParsedTokenDto parsed = tokenProviderPort.parseSignupCompletionToken(token);
         long ttlSeconds = remainingTtlSeconds(parsed.getExpiresAt());
-        signupCompletionTokenPort.save(authUuid, parsed.getTokenId(), ttlSeconds);
-        return token;
+        return new PreparedSignupCompletionToken(token, parsed.getTokenId(), ttlSeconds);
+    }
+
+    private record PreparedSignupCompletionToken(String token, String tokenId, long ttlSeconds) {
     }
 
     @Override

@@ -119,7 +119,9 @@ class AuthServiceTest {
                 .thenReturn(Optional.of(external));
         when(identityKeyHashPort.hashForLookup("ci-value-001")).thenReturn("ci-hash-001");
         when(passwordEncoderPort.encode("Password1!")).thenReturn("encoded-hash");
-        when(signupPersistenceService.persist(any(), any(), any(AuthDomain.class)))
+        when(signupPersistenceService.persist(
+                any(), any(), any(AuthDomain.class), any(), org.mockito.ArgumentMatchers.anyLong()
+        ))
                 .thenAnswer(invocation -> invocation.getArgument(2));
         when(tokenProviderPort.createSignupCompletionToken(any())).thenReturn("completion-token");
         when(tokenProviderPort.parseSignupCompletionToken("completion-token"))
@@ -136,7 +138,9 @@ class AuthServiceTest {
         verify(signupPersistenceService).persist(
                 org.mockito.ArgumentMatchers.eq("verify-001"),
                 org.mockito.ArgumentMatchers.eq("ci-hash-001"),
-                authCaptor.capture()
+                authCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq("completion-jti"),
+                org.mockito.ArgumentMatchers.eq(120L)
         );
         assertThat(authCaptor.getValue().getMemberName()).isEqualTo("홍길동");
         assertThat(authCaptor.getValue().getPasswordHash()).isEqualTo("encoded-hash");
