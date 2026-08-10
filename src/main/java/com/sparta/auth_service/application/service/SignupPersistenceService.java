@@ -8,6 +8,7 @@ import com.sparta.auth_service.application.exception.IdentityVerificationNotRead
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
 import com.sparta.auth_service.application.port.out.SignupIdentityClaimPort;
+import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
 import com.sparta.auth_service.domain.model.AuthDomain;
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
@@ -23,12 +24,15 @@ public class SignupPersistenceService {
     private final AuthRepositoryPort authRepositoryPort;
     private final IdentityVerificationRepositoryPort identityVerificationRepositoryPort;
     private final SignupIdentityClaimPort signupIdentityClaimPort;
+    private final SignupCompletionTokenPort signupCompletionTokenPort;
 
     @Transactional
     public AuthDomain persist(
             String requestToken,
             String expectedCiHash,
-            AuthDomain authDomain
+            AuthDomain authDomain,
+            String completionTokenId,
+            long completionTokenTtlSeconds
     ) {
         IdentityVerificationDomain verification = identityVerificationRepositoryPort.findByRequestToken(requestToken)
                 .orElseThrow(() -> new IdentityVerificationNotFoundException("본인인증 이력을 찾을 수 없습니다."));
@@ -50,6 +54,12 @@ public class SignupPersistenceService {
         signupIdentityClaimPort.claim(expectedCiHash, authDomain.getAuthUuid());
         AuthDomain saved = authRepositoryPort.save(authDomain);
         identityVerificationRepositoryPort.save(verification.withMemberUuid(saved.getAuthUuid()));
+        // Redis 저장 실패 시 예외를 전파해 auth/CI claim/본인인증 연결을 함께 롤백한다.
+        signupCompletionTokenPort.save(
+                saved.getAuthUuid(),
+                completionTokenId,
+                completionTokenTtlSeconds
+        );
         return saved;
     }
 
