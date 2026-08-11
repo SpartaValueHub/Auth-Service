@@ -1,0 +1,92 @@
+name: Deploy AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-aws-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+      COMPOSE_SERVICE: ${{ vars.COMPOSE_SERVICE }}
+      IMAGE_TAG: ${{ vars.IMAGE_TAG }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          set -euo pipefail
+          test -n "${IMAGE_NAME}" || { echo "Missing repo variable IMAGE_NAME"; exit 1; }
+          test -n "${COMPOSE_SERVICE}" || { echo "Missing repo variable COMPOSE_SERVICE"; exit 1; }
+          if [ -z "${IMAGE_TAG}" ]; then echo "IMAGE_TAG=dev" >> "$GITHUB_ENV"; else echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"; fi
+          test -n "${{ secrets.APPS_EC2_HOST }}" || { echo "Missing secret APPS_EC2_HOST"; exit 1; }
+          test -n "${{ secrets.APPS_EC2_USER }}" || { echo "Missing secret APPS_EC2_USER"; exit 1; }
+          test -n "${{ secrets.APPS_EC2_SSH_KEY }}" || { echo "Missing secret APPS_EC2_SSH_KEY"; exit 1; }
+          test -n "${{ secrets.DOCKERHUB_USERNAME }}" || { echo "Missing secret DOCKERHUB_USERNAME"; exit 1; }
+          test -n "${{ secrets.DOCKERHUB_TOKEN }}" || { echo "Missing secret DOCKERHUB_TOKEN"; exit 1; }
+          echo "IMAGE_NAME=${IMAGE_NAME}"
+          echo "COMPOSE_SERVICE=${COMPOSE_SERVICE}"
+
+      - name: Prepare application.jar when Dockerfile needs it
+        run: |
+          set -euo pipefail
+          if grep -q 'COPY application.jar' Dockerfile && ! grep -q 'AS builder' Dockerfile; then
+            echo "Legacy Dockerfile detected ??building jar first"
+            chmod +x gradlew
+            ./gradlew bootJar -x test --no-daemon
+            JAR="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -1)"
+            test -n "$JAR"
+            cp "$JAR" application.jar
+          else
+            echo "Multi-stage Dockerfile ??jar build happens in Docker"
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy on Apps EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.APPS_EC2_HOST }}
+          username: ${{ secrets.APPS_EC2_USER }}
+          key: ${{ secrets.APPS_EC2_SSH_KEY }}
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            set -euo pipefail
+            cd /opt/valuehub-aws-infra
+            test -f compose.prod-apps.yml
+            test -f .env
+            IMAGE_TAG="${{ env.IMAGE_TAG }}" docker compose -f compose.prod-apps.yml --env-file .env pull "${{ env.COMPOSE_SERVICE }}"
+            IMAGE_TAG="${{ env.IMAGE_TAG }}" docker compose -f compose.prod-apps.yml --env-file .env up -d --no-deps "${{ env.COMPOSE_SERVICE }}"
+            docker image prune -f
+            docker ps --filter "name=valuehub-${{ env.COMPOSE_SERVICE }}"
