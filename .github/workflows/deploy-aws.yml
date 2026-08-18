@@ -89,7 +89,7 @@ jobs:
           host: ${{ secrets.APPS_EC2_HOST }}
           username: ${{ secrets.APPS_EC2_USER }}
           key: ${{ secrets.APPS_EC2_SSH_KEY }}
-          script_stop: true
+          script_stop: false
           command_timeout: 20m
           envs: PORTONE_API_SECRET,CI_HASH_KEY,RECAPTCHA_SECRET_KEY,AUTH_ALLOWED_ORIGINS,CAPTCHA_ENABLED,AUTH_CAPTCHA_ALLOWED_HOSTNAMES
           script: |
