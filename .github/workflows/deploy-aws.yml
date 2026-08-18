@@ -37,23 +37,6 @@ jobs:
           test -n "${{ secrets.PORTONE_API_SECRET }}" || { echo "Missing secret PORTONE_API_SECRET"; exit 1; }
           test -n "${{ secrets.CI_HASH_KEY }}" || { echo "Missing secret CI_HASH_KEY"; exit 1; }
           test -n "${{ vars.AUTH_ALLOWED_ORIGINS }}" || { echo "Missing repo variable AUTH_ALLOWED_ORIGINS"; exit 1; }
-          echo "IMAGE_NAME=${IMAGE_NAME}"
-          echo "COMPOSE_SERVICE=${COMPOSE_SERVICE}"
-
-      - name: Prepare application.jar when Dockerfile needs it
-        run: |
-          set -euo pipefail
-          if grep -q 'COPY application.jar' Dockerfile && ! grep -q 'AS builder' Dockerfile; then
-            echo "Legacy Dockerfile detected — building jar first"
-            chmod +x gradlew
-            ./gradlew bootJar -x test --no-daemon
-            JAR="$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -1)"
-            test -n "$JAR"
-            cp "$JAR" application.jar
-          else
-            echo "Multi-stage Dockerfile — jar build happens in Docker"
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -84,14 +67,13 @@ jobs:
           RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
           AUTH_ALLOWED_ORIGINS: ${{ vars.AUTH_ALLOWED_ORIGINS }}
           CAPTCHA_ENABLED: ${{ vars.CAPTCHA_ENABLED }}
-          AUTH_CAPTCHA_ALLOWED_HOSTNAMES: ${{ vars.AUTH_CAPTCHA_ALLOWED_HOSTNAMES }}
         with:
           host: ${{ secrets.APPS_EC2_HOST }}
           username: ${{ secrets.APPS_EC2_USER }}
           key: ${{ secrets.APPS_EC2_SSH_KEY }}
           script_stop: true
           command_timeout: 20m
-          envs: PORTONE_API_SECRET,CI_HASH_KEY,RECAPTCHA_SECRET_KEY,AUTH_ALLOWED_ORIGINS,CAPTCHA_ENABLED,AUTH_CAPTCHA_ALLOWED_HOSTNAMES
+          envs: PORTONE_API_SECRET,CI_HASH_KEY,RECAPTCHA_SECRET_KEY,AUTH_ALLOWED_ORIGINS,CAPTCHA_ENABLED
           script: |
             set -euo pipefail
             cd /opt/valuehub-aws-infra
