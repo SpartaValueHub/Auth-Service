@@ -34,6 +34,9 @@ jobs:
           test -n "${{ secrets.APPS_EC2_SSH_KEY }}" || { echo "Missing secret APPS_EC2_SSH_KEY"; exit 1; }
           test -n "${{ secrets.DOCKERHUB_USERNAME }}" || { echo "Missing secret DOCKERHUB_USERNAME"; exit 1; }
           test -n "${{ secrets.DOCKERHUB_TOKEN }}" || { echo "Missing secret DOCKERHUB_TOKEN"; exit 1; }
+          test -n "${{ secrets.PORTONE_API_SECRET }}" || { echo "Missing secret PORTONE_API_SECRET"; exit 1; }
+          test -n "${{ secrets.CI_HASH_KEY }}" || { echo "Missing secret CI_HASH_KEY"; exit 1; }
+          test -n "${{ vars.AUTH_ALLOWED_ORIGINS }}" || { echo "Missing repo variable AUTH_ALLOWED_ORIGINS"; exit 1; }
           echo "IMAGE_NAME=${IMAGE_NAME}"
           echo "COMPOSE_SERVICE=${COMPOSE_SERVICE}"
 
@@ -75,17 +78,53 @@ jobs:
 
       - name: Deploy on Apps EC2
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          PORTONE_API_SECRET: ${{ secrets.PORTONE_API_SECRET }}
+          CI_HASH_KEY: ${{ secrets.CI_HASH_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          AUTH_ALLOWED_ORIGINS: ${{ vars.AUTH_ALLOWED_ORIGINS }}
+          CAPTCHA_ENABLED: ${{ vars.CAPTCHA_ENABLED }}
+          AUTH_CAPTCHA_ALLOWED_HOSTNAMES: ${{ vars.AUTH_CAPTCHA_ALLOWED_HOSTNAMES }}
         with:
           host: ${{ secrets.APPS_EC2_HOST }}
           username: ${{ secrets.APPS_EC2_USER }}
           key: ${{ secrets.APPS_EC2_SSH_KEY }}
           script_stop: true
           command_timeout: 20m
+          envs: PORTONE_API_SECRET,CI_HASH_KEY,RECAPTCHA_SECRET_KEY,AUTH_ALLOWED_ORIGINS,CAPTCHA_ENABLED,AUTH_CAPTCHA_ALLOWED_HOSTNAMES
           script: |
             set -euo pipefail
             cd /opt/valuehub-aws-infra
             test -f compose.prod-apps.yml
             test -f .env
+            python3 - <<'PY'
+            import os
+            from pathlib import Path
+            keys = ["PORTONE_API_SECRET","CI_HASH_KEY","RECAPTCHA_SECRET_KEY","AUTH_ALLOWED_ORIGINS","CAPTCHA_ENABLED","AUTH_CAPTCHA_ALLOWED_HOSTNAMES"]
+            required = ["PORTONE_API_SECRET","CI_HASH_KEY","AUTH_ALLOWED_ORIGINS"]
+            updates = {key: os.environ.get(key, "") for key in keys}
+            missing = [key for key in required if not updates[key]]
+            if missing:
+                raise SystemExit("Missing required deploy env: " + ",".join(missing))
+            path = Path(".env")
+            seen = set()
+            out = []
+            for line in path.read_text().splitlines():
+                if "=" in line and not line.strip().startswith("#"):
+                    name = line.split("=", 1)[0]
+                    if name in updates:
+                        out.append(f"{name}={updates[name]}")
+                        seen.add(name)
+                    else:
+                        out.append(line)
+                else:
+                    out.append(line)
+            for key, value in updates.items():
+                if key not in seen:
+                    out.append(f"{key}={value}")
+            path.write_text("\n".join(out) + "\n")
+            print("Updated .env keys: " + ",".join(keys))
+            PY
             IMAGE_TAG="${{ env.IMAGE_TAG }}" docker compose -f compose.prod-apps.yml --env-file .env pull "${{ env.COMPOSE_SERVICE }}"
             IMAGE_TAG="${{ env.IMAGE_TAG }}" docker compose -f compose.prod-apps.yml --env-file .env up -d --no-deps "${{ env.COMPOSE_SERVICE }}"
             docker image prune -f
