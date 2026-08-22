@@ -15,7 +15,8 @@ Hibernate `ddl-auto: update` 사용 중이므로 dev 환경은 재기동 시 스
 | `uk_auth_phone_number` | phone_number |
 
 > `@Column(unique=true)` 대신 named `@UniqueConstraint`만 사용한다.  
-> CI 중복 검사는 `identity_verifications.ci_hash` 이력 pre-check(`existsSignUpLinkedByCiHash`)로 수행하며, ci_hash UNIQUE 없이 동시 가입 race를 완전히 막지는 못한다.
+> CI 중복 pre-check는 `signup_identity_claims.ci_hash` UNIQUE 조회(`SignupIdentityClaimPort.existsByCiHash`)로 수행한다.  
+> 동시 가입 race는 `claim()` INSERT UNIQUE가 막고, 탈퇴 시 `releaseByAuthUuid`로 재가입을 허용한다.
 
 ```sql
 -- member_status 추가 (기존 행은 ACTIVE)

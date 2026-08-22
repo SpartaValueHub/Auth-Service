@@ -25,8 +25,8 @@
 
 | 검색 대상 | 결과 |
 |-----------|------|
-| `WithdrawMemberUseCase` / `POST /auth/withdraw` | PASS(`WITHDRAWAL`) confirm 후 CI 매칭 → `WITHDRAWN` + 세션 revoke |
-| `AuthDomain` | `withdraw()` — ACTIVE → WITHDRAWN (멱등). `isWithdrawn()` |
+| `WithdrawMemberUseCase` / `POST /auth/withdraw` | PASS(`WITHDRAWAL`) confirm 후 CI 매칭 → anonymize + claim release + `WITHDRAWN` + 세션 revoke |
+| `AuthDomain` | `withdraw()` — ACTIVE/WITHDRAWN → WITHDRAWN + 식별자 anonymize (멱등). `isWithdrawn()` |
 | 사용처 | `signIn`·`refresh`에서 `auth.isActive()` 검사 후 `MemberNotActiveException` |
 
 가입 시 기본값 `ACTIVE`(`AuthDomain.createSignUp`).
