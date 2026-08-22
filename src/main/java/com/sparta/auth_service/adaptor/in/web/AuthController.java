@@ -3,6 +3,7 @@ package com.sparta.auth_service.adaptor.in.web;
 import com.sparta.auth_service.adaptor.in.web.mapper.AuthWebMapper;
 import com.sparta.auth_service.adaptor.in.web.support.AuthCookieWriter;
 import com.sparta.auth_service.adaptor.in.web.support.ClientIpResolver;
+import com.sparta.auth_service.adaptor.in.web.vo.AuthAccountResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
@@ -13,6 +14,7 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.WithdrawMemberRequestVo;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
+import com.sparta.auth_service.application.port.in.GetMyAuthAccountUseCase;
 import com.sparta.auth_service.application.port.in.WithdrawMemberUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthLogoutRequestDto;
@@ -23,6 +25,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
+import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
 import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -56,6 +59,7 @@ public class AuthController {
     private static final String MEMBER_UUID_HEADER = "X-Member-Uuid";
 
     private final AuthUseCase authUseCase;
+    private final GetMyAuthAccountUseCase getMyAuthAccountUseCase;
     private final WithdrawMemberUseCase withdrawMemberUseCase;
     private final AuthWebMapper authWebMapper;
     private final AuthCookieWriter authCookieWriter;
@@ -133,6 +137,16 @@ public class AuthController {
     @GetMapping("/auth/check/email")
     public AuthAvailabilityResponseVo checkEmail(@RequestParam String email) {
         AuthAvailabilityResultDto resultDto = authUseCase.checkEmailAvailability(email);
+        return authWebMapper.toVo(resultDto);
+    }
+
+    @Operation(summary = "내 계정 정보 조회", description = "Gateway JWT 검증 후 X-Member-Uuid로 아이디·이메일·전화·가입일을 조회합니다.")
+    @GetMapping("/auth/me")
+    public AuthAccountResponseVo getMyAuthAccount(
+            @RequestHeader(value = MEMBER_UUID_HEADER, required = false) String headerMemberUuid
+    ) {
+        String authUuid = requireMemberUuid(headerMemberUuid);
+        GetMyAuthAccountResultDto resultDto = getMyAuthAccountUseCase.getMyAuthAccount(authUuid);
         return authWebMapper.toVo(resultDto);
     }
 

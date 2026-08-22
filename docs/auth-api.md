@@ -344,6 +344,51 @@ Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{a
 
 ---
 
+## 내 계정 정보 조회
+
+### Summary
+로그인한 회원의 Auth 계정 정보(아이디·이메일·전화번호·가입일)를 조회합니다. 닉네임·프로필은 Member-Service `GET /api/v1/members/me`를 사용합니다.
+
+### Method · Path
+`GET /api/v1/auth/me`
+
+### Auth
+필요 — Gateway JWT (HttpOnly Cookie `vh_access_token` 또는 Bearer). Gateway가 `X-Member-Uuid` 헤더를 주입합니다. public path 아님.
+
+### Request
+없음 (Path/Query/Body 없음). 회원 식별은 `X-Member-Uuid` 헤더만 사용합니다.
+
+### Response (200)
+
+| 필드 | 타입 |
+|------|------|
+| authUuid | string |
+| logInId | string |
+| email | string |
+| phoneNumber | string |
+| joinedAt | string (ISO-8601 Instant, `auth.created_at`) |
+
+```json
+{
+  "authUuid": "550e8400-e29b-41d4-a716-446655440000",
+  "logInId": "user01",
+  "email": "user@example.com",
+  "phoneNumber": "01012345678",
+  "joinedAt": "2026-08-04T08:00:00Z"
+}
+```
+
+비밀번호·passwordHash 등 민감 정보는 포함하지 않습니다.
+
+### Errors
+
+| status | code | 의미 |
+|--------|------|------|
+| 401 | AUTH_UNAUTHORIZED | `X-Member-Uuid` 헤더 없음·공백 |
+| 404 | AUTH_NOT_FOUND | 계정 없음 |
+
+---
+
 ## 회원 탈퇴
 
 ### Summary
