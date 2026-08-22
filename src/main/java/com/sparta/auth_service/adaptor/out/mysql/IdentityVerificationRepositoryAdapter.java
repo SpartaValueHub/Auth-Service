@@ -39,14 +39,6 @@ public class IdentityVerificationRepositoryAdapter implements IdentityVerificati
     }
 
     @Override
-    public boolean existsSignUpLinkedByCiHash(String ciHash) {
-        return identityVerificationRepository.existsByCiHashAndPurposeAndMemberUuidIsNotNull(
-                ciHash,
-                VerificationPurpose.SIGN_UP
-        );
-    }
-
-    @Override
     public Optional<IdentityVerificationDomain> findSignUpLinkedByMemberUuid(String memberUuid) {
         return identityVerificationRepository.findFirstByMemberUuidAndPurposeAndVerificationStatus(
                         memberUuid,

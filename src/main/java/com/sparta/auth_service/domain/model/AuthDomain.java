@@ -28,6 +28,12 @@ public class AuthDomain {
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()\\-+_=])[A-Za-z\\d!@#$%^&*()\\-+_=]{8,20}$"
     );
+    // 탈퇴 식별자 prefix — authUuid(compact)에서 유도해 UNIQUE 충돌·재사용을 막음
+    private static final String WITHDRAWN_IDENTIFIER_PREFIX = "w";
+    // 탈퇴 email 도메인 — 실사용 불가 local-part만 보관
+    private static final String WITHDRAWN_EMAIL_DOMAIN = "@w.invalid";
+    // loginId·phone_number 컬럼 길이(20)에 맞춘 compact uuid 사용 길이
+    private static final int WITHDRAWN_COMPACT_ID_LENGTH = 19;
 
     /** 외부 식별자 — JWT·API 응답에 사용, DB PK(auth_id)와 분리 */
     private String authUuid;
@@ -137,28 +143,58 @@ public class AuthDomain {
         return memberStatus == MemberStatus.WITHDRAWN;
     }
 
-    /** 회원 탈퇴 — ACTIVE만 WITHDRAWN으로 전이. 이미 탈퇴면 동일 인스턴스 반환(멱등) */
+    private static String withdrawnLoginId(String authUuid) {
+        return WITHDRAWN_IDENTIFIER_PREFIX + compactUuid(authUuid).substring(0, WITHDRAWN_COMPACT_ID_LENGTH);
+    }
+
+    private static String withdrawnEmail(String authUuid) {
+        return WITHDRAWN_IDENTIFIER_PREFIX + compactUuid(authUuid) + WITHDRAWN_EMAIL_DOMAIN;
+    }
+
+    private static String withdrawnPhoneNumber(String authUuid) {
+        return WITHDRAWN_IDENTIFIER_PREFIX + compactUuid(authUuid).substring(0, WITHDRAWN_COMPACT_ID_LENGTH);
+    }
+
+    /** 회원 탈퇴 — ACTIVE→WITHDRAWN + 식별자 anonymize. 이미 완료면 동일 인스턴스(멱등) */
     public AuthDomain withdraw() {
-        if (memberStatus == MemberStatus.WITHDRAWN) {
-            return this;
-        }
-        if (memberStatus != MemberStatus.ACTIVE) {
+        if (memberStatus != MemberStatus.ACTIVE && memberStatus != MemberStatus.WITHDRAWN) {
             throw new IllegalStateException("탈퇴할 수 없는 계정 상태입니다.");
+        }
+        // 탈퇴 식별자 — authUuid 기반이라 계정마다 충돌 없이 UNIQUE 해제
+        String nextLoginId = withdrawnLoginId(authUuid);
+        String nextEmail = withdrawnEmail(authUuid);
+        String nextPhoneNumber = withdrawnPhoneNumber(authUuid);
+        if (memberStatus == MemberStatus.WITHDRAWN
+                && nextLoginId.equals(loginId)
+                && nextEmail.equals(email)
+                && nextPhoneNumber.equals(phoneNumber)) {
+            return this;
         }
         return AuthDomain.builder()
                 .authUuid(this.authUuid)
-                .loginId(this.loginId)
+                .loginId(nextLoginId)
                 .memberName(this.memberName)
                 .birthdayDate(this.birthdayDate)
-                .phoneNumber(this.phoneNumber)
+                .phoneNumber(nextPhoneNumber)
                 .gender(this.gender)
-                .email(this.email)
+                .email(nextEmail)
                 .passwordHash(this.passwordHash)
                 .passwordChangedAt(this.passwordChangedAt)
                 .memberStatus(MemberStatus.WITHDRAWN)
                 .createdAt(this.createdAt)
                 .updatedAt(this.updatedAt)
                 .build();
+    }
+
+    private static String compactUuid(String authUuid) {
+        if (authUuid == null || authUuid.isBlank()) {
+            throw new IllegalArgumentException("authUuid는 필수입니다.");
+        }
+        String compact = authUuid.trim().replace("-", "").toLowerCase(Locale.ROOT);
+        if (compact.length() < WITHDRAWN_COMPACT_ID_LENGTH) {
+            throw new IllegalArgumentException("authUuid 형식이 올바르지 않습니다.");
+        }
+        return compact;
     }
 
     /** 평문 비밀번호 검증 — Application에서 encode 전에 호출 */

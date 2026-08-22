@@ -73,7 +73,8 @@ public class SignupPersistenceService {
         if (authRepositoryPort.existsByPhoneNumber(authDomain.getPhoneNumber())) {
             throw new DuplicateResourceException("AUTH_DUPLICATE_PHONE", "이미 사용 중인 phoneNumber입니다.");
         }
-        if (identityVerificationRepositoryPort.existsSignUpLinkedByCiHash(ciHash)) {
+        // claim UNIQUE 인덱스 조회 — 탈퇴 후 release된 CI는 재가입 가능
+        if (signupIdentityClaimPort.existsByCiHash(ciHash)) {
             throw new DuplicateResourceException("AUTH_DUPLICATE_IDENTITY", "이미 가입된 본인인증 정보입니다.");
         }
     }

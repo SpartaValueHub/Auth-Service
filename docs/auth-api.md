@@ -393,6 +393,7 @@ Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{a
 
 ### Summary
 PASS 본인인증(`purpose=WITHDRAWAL`) confirm SUCCESS 후, 가입 시 연결된 CI와 탈퇴 인증 CI가 일치하면 `member_status`를 `WITHDRAWN`으로 변경하고 세션을 무효화합니다.  
+탈퇴 시 loginId·email·phone을 authUuid 기반 값으로 anonymize하고 `signup_identity_claims`를 해제하여 동일 식별자·CI로 재가입할 수 있습니다.  
 진행 중 거래·미처리 환불 확인은 Auth 범위 밖(후속)입니다.
 
 ### Method · Path
@@ -420,9 +421,12 @@ PASS 본인인증(`purpose=WITHDRAWAL`) confirm SUCCESS 후, 가입 시 연결�
 ### Response
 `204 No Content` + 만료 Cookie (`Max-Age=0`) 2개
 
-- `member_status` → `WITHDRAWN` (이미 탈퇴면 상태 변경 생략, 세션 revoke는 수행 — 멱등)
+- `member_status` → `WITHDRAWN`
+- loginId·email·phone → authUuid 기반 anonymize (UNIQUE 해제, 재가입 가능)
+- `signup_identity_claims` 해당 authUuid 행 DELETE (CI 재가입 허용)
 - 탈퇴 본인인증 이력에 `memberUuid` 연결(재사용 방지)
 - 활성 access jti blacklist + access/refresh Redis 삭제
+- 이미 탈퇴·anonymize 완료면 상태/식별자 변경 생략, claim release·세션 revoke는 수행 (멱등)
 
 ### Errors
 

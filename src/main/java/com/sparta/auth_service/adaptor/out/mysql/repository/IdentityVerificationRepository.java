@@ -12,8 +12,6 @@ public interface IdentityVerificationRepository extends JpaRepository<IdentityVe
 
     Optional<IdentityVerificationEntity> findByRequestToken(String requestToken);
 
-    boolean existsByCiHashAndPurposeAndMemberUuidIsNotNull(String ciHash, VerificationPurpose purpose);
-
     Optional<IdentityVerificationEntity> findFirstByMemberUuidAndPurposeAndVerificationStatus(
             String memberUuid,
             VerificationPurpose purpose,

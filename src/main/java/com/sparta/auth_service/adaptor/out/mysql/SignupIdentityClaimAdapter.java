@@ -25,4 +25,28 @@ public class SignupIdentityClaimAdapter implements SignupIdentityClaimPort {
             );
         }
     }
+
+    @Override
+    public boolean existsByCiHash(String ciHash) {
+        return repository.existsByCiHash(requireCiHash(ciHash));
+    }
+
+    @Override
+    public void releaseByAuthUuid(String authUuid) {
+        repository.deleteByAuthUuid(requireAuthUuid(authUuid));
+    }
+
+    private static String requireCiHash(String ciHash) {
+        if (ciHash == null || ciHash.isBlank()) {
+            throw new IllegalArgumentException("ciHash는 필수입니다.");
+        }
+        return ciHash.trim();
+    }
+
+    private static String requireAuthUuid(String authUuid) {
+        if (authUuid == null || authUuid.isBlank()) {
+            throw new IllegalArgumentException("authUuid는 필수입니다.");
+        }
+        return authUuid.trim();
+    }
 }

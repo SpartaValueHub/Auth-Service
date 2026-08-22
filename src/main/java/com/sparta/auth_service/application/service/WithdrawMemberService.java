@@ -11,6 +11,7 @@ import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
 import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
+import com.sparta.auth_service.application.port.out.SignupIdentityClaimPort;
 import com.sparta.auth_service.domain.model.AuthDomain;
 import com.sparta.auth_service.domain.model.IdentityVerificationDomain;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class WithdrawMemberService implements WithdrawMemberUseCase {
 
     private final AuthRepositoryPort authRepositoryPort;
     private final IdentityVerificationRepositoryPort identityVerificationRepositoryPort;
+    private final SignupIdentityClaimPort signupIdentityClaimPort;
     private final SessionInvalidationPort sessionInvalidationPort;
 
     @Override
@@ -56,12 +58,18 @@ public class WithdrawMemberService implements WithdrawMemberUseCase {
             throw new AuthIdentityMismatchException("본인인증 정보가 계정과 일치하지 않습니다.");
         }
 
-        if (!auth.isWithdrawn()) {
-            if (!auth.isActive()) {
-                throw new MemberNotActiveException("현재 탈퇴할 수 없는 계정입니다.");
-            }
-            authRepositoryPort.save(auth.withdraw());
+        if (!auth.isActive() && !auth.isWithdrawn()) {
+            throw new MemberNotActiveException("현재 탈퇴할 수 없는 계정입니다.");
         }
+
+        // anonymize 미반영 탈퇴 행도 재호출 시 UNIQUE 해제
+        AuthDomain withdrawn = auth.withdraw();
+        if (withdrawn != auth) {
+            authRepositoryPort.save(withdrawn);
+        }
+
+        // CI 재가입 허용 — UNIQUE claim 해제 (없으면 no-op)
+        signupIdentityClaimPort.releaseByAuthUuid(authUuid);
 
         if (!withdrawalVerification.hasLinkedMember()) {
             identityVerificationRepositoryPort.save(withdrawalVerification.withMemberUuid(authUuid));
@@ -88,7 +96,7 @@ public class WithdrawMemberService implements WithdrawMemberUseCase {
 
     private static String requireRequestToken(String requestToken) {
         if (requestToken == null || requestToken.isBlank()) {
-            throw new IllegalArgumentException("requestToken은 필수입니다.");
+            throw new IllegalArgumentException("requestToken는 필수입니다.");
         }
         return requestToken.trim();
     }

@@ -60,6 +60,24 @@ class SignupPersistenceServiceTest {
     }
 
     @Test
+    void persist_stopsBeforeClaimWhenIdentityAlreadyExists() {
+        AuthDomain auth = auth();
+        when(identityVerificationRepositoryPort.findByRequestToken("verify-1"))
+                .thenReturn(Optional.of(verified()));
+        when(signupIdentityClaimPort.existsByCiHash("ci-hash")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.persist(
+                "verify-1", "ci-hash", auth, "completion-jti", 120L
+        ))
+                .isInstanceOf(DuplicateResourceException.class)
+                .extracting("code")
+                .isEqualTo("AUTH_DUPLICATE_IDENTITY");
+
+        verify(signupIdentityClaimPort, never()).claim(any(), any());
+        verify(authRepositoryPort, never()).save(any());
+    }
+
+    @Test
     void persist_stopsBeforeAuthSaveWhenIdentityClaimConflicts() {
         AuthDomain auth = auth();
         when(identityVerificationRepositoryPort.findByRequestToken("verify-1"))
