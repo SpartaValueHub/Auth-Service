@@ -1,5 +1,6 @@
 package com.sparta.auth_service.adaptor.in.web.mapper;
 
+import com.sparta.auth_service.adaptor.in.web.vo.AuthAccountResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
@@ -14,6 +15,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
+import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
 import org.springframework.stereotype.Component;
 
 /** VO ↔ Input DTO 변환 — sign-up은 requestToken·loginId·password·email만 전달 */
@@ -76,6 +78,16 @@ public class AuthWebMapper {
     public AuthAvailabilityResponseVo toVo(AuthAvailabilityResultDto dto) {
         return AuthAvailabilityResponseVo.builder()
                 .available(dto.isAvailable())
+                .build();
+    }
+
+    public AuthAccountResponseVo toVo(GetMyAuthAccountResultDto dto) {
+        return AuthAccountResponseVo.builder()
+                .authUuid(dto.getAuthUuid())
+                .logInId(dto.getLoginId())
+                .email(dto.getEmail())
+                .phoneNumber(dto.getPhoneNumber())
+                .joinedAt(dto.getJoinedAt())
                 .build();
     }
 }
