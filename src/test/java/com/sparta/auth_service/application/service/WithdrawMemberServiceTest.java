@@ -8,6 +8,7 @@ import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import com.sparta.auth_service.application.port.out.AuthRepositoryPort;
 import com.sparta.auth_service.application.port.out.IdentityVerificationRepositoryPort;
 import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
+import com.sparta.auth_service.application.port.out.SignupIdentityClaimPort;
 import com.sparta.auth_service.domain.enums.Gender;
 import com.sparta.auth_service.domain.enums.MemberStatus;
 import com.sparta.auth_service.domain.enums.VerificationMethod;
@@ -46,13 +47,15 @@ class WithdrawMemberServiceTest {
     @Mock
     private IdentityVerificationRepositoryPort identityVerificationRepositoryPort;
     @Mock
+    private SignupIdentityClaimPort signupIdentityClaimPort;
+    @Mock
     private SessionInvalidationPort sessionInvalidationPort;
 
     @InjectMocks
     private WithdrawMemberService withdrawMemberService;
 
     @Test
-    void withdraw_success_matchesCi_savesWithdrawn_andRevokesSession() {
+    void withdraw_success_anonymizesIdentifiers_releasesClaim_andRevokesSession() {
         when(authRepositoryPort.findByAuthUuid(AUTH_UUID)).thenReturn(Optional.of(activeAuth()));
         when(identityVerificationRepositoryPort.findByRequestToken(REQUEST_TOKEN))
                 .thenReturn(Optional.of(withdrawalVerification(CI_HASH, null)));
@@ -66,13 +69,19 @@ class WithdrawMemberServiceTest {
 
         ArgumentCaptor<AuthDomain> authCaptor = ArgumentCaptor.forClass(AuthDomain.class);
         verify(authRepositoryPort).save(authCaptor.capture());
-        assertThat(authCaptor.getValue().isWithdrawn()).isTrue();
+        AuthDomain saved = authCaptor.getValue();
+        AuthDomain expected = activeAuth().withdraw();
+        assertThat(saved.isWithdrawn()).isTrue();
+        assertThat(saved.getLoginId()).isEqualTo(expected.getLoginId());
+        assertThat(saved.getEmail()).isEqualTo(expected.getEmail());
+        assertThat(saved.getPhoneNumber()).isEqualTo(expected.getPhoneNumber());
 
         ArgumentCaptor<IdentityVerificationDomain> verificationCaptor =
                 ArgumentCaptor.forClass(IdentityVerificationDomain.class);
         verify(identityVerificationRepositoryPort).save(verificationCaptor.capture());
         assertThat(verificationCaptor.getValue().isLinkedToMember(AUTH_UUID)).isTrue();
 
+        verify(signupIdentityClaimPort).releaseByAuthUuid(AUTH_UUID);
         verify(sessionInvalidationPort).revokeAllSessions(AUTH_UUID);
     }
 
@@ -88,6 +97,7 @@ class WithdrawMemberServiceTest {
                 .isInstanceOf(AuthIdentityMismatchException.class);
 
         verify(authRepositoryPort, never()).save(any());
+        verify(signupIdentityClaimPort, never()).releaseByAuthUuid(any());
         verify(sessionInvalidationPort, never()).revokeAllSessions(any());
     }
 
@@ -122,12 +132,13 @@ class WithdrawMemberServiceTest {
                 .isInstanceOf(MemberNotActiveException.class);
 
         verify(authRepositoryPort, never()).save(any());
+        verify(signupIdentityClaimPort, never()).releaseByAuthUuid(any());
         verify(sessionInvalidationPort, never()).revokeAllSessions(any());
     }
 
     @Test
-    void withdraw_alreadyWithdrawn_isIdempotentAndRevokesSession() {
-        when(authRepositoryPort.findByAuthUuid(AUTH_UUID)).thenReturn(Optional.of(authWithStatus(MemberStatus.WITHDRAWN)));
+    void withdraw_alreadyAnonymized_isIdempotent_releasesClaim_andRevokesSession() {
+        when(authRepositoryPort.findByAuthUuid(AUTH_UUID)).thenReturn(Optional.of(anonymizedWithdrawnAuth()));
         when(identityVerificationRepositoryPort.findByRequestToken(REQUEST_TOKEN))
                 .thenReturn(Optional.of(withdrawalVerification(CI_HASH, AUTH_UUID)));
         when(identityVerificationRepositoryPort.findSignUpLinkedByMemberUuid(AUTH_UUID))
@@ -137,6 +148,25 @@ class WithdrawMemberServiceTest {
 
         verify(authRepositoryPort, never()).save(any());
         verify(identityVerificationRepositoryPort, never()).save(any());
+        verify(signupIdentityClaimPort).releaseByAuthUuid(AUTH_UUID);
+        verify(sessionInvalidationPort).revokeAllSessions(AUTH_UUID);
+    }
+
+    @Test
+    void withdraw_legacyWithdrawn_anonymizesAndReleasesClaim() {
+        when(authRepositoryPort.findByAuthUuid(AUTH_UUID)).thenReturn(Optional.of(authWithStatus(MemberStatus.WITHDRAWN)));
+        when(identityVerificationRepositoryPort.findByRequestToken(REQUEST_TOKEN))
+                .thenReturn(Optional.of(withdrawalVerification(CI_HASH, AUTH_UUID)));
+        when(identityVerificationRepositoryPort.findSignUpLinkedByMemberUuid(AUTH_UUID))
+                .thenReturn(Optional.of(signUpLinked(CI_HASH)));
+        when(authRepositoryPort.save(any(AuthDomain.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        withdrawMemberService.withdraw(request());
+
+        ArgumentCaptor<AuthDomain> authCaptor = ArgumentCaptor.forClass(AuthDomain.class);
+        verify(authRepositoryPort).save(authCaptor.capture());
+        assertThat(authCaptor.getValue().getLoginId()).isEqualTo(activeAuth().withdraw().getLoginId());
+        verify(signupIdentityClaimPort).releaseByAuthUuid(AUTH_UUID);
         verify(sessionInvalidationPort).revokeAllSessions(AUTH_UUID);
     }
 
@@ -149,6 +179,10 @@ class WithdrawMemberServiceTest {
 
     private static AuthDomain activeAuth() {
         return authWithStatus(MemberStatus.ACTIVE);
+    }
+
+    private static AuthDomain anonymizedWithdrawnAuth() {
+        return authWithStatus(MemberStatus.ACTIVE).withdraw();
     }
 
     private static AuthDomain authWithStatus(MemberStatus status) {
