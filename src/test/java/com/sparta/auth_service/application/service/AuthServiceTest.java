@@ -17,6 +17,7 @@ import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
+import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.domain.enums.Gender;
@@ -86,6 +87,9 @@ class AuthServiceTest {
 
     @Mock
     private SignupPersistenceService signupPersistenceService;
+
+    @Mock
+    private SessionInvalidationPort sessionInvalidationPort;
 
     @Mock
     private JwtProperties jwtProperties;

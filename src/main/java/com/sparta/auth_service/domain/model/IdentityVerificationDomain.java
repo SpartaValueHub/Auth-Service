@@ -166,6 +166,25 @@ public class IdentityVerificationDomain {
                 && !ciHash.isBlank();
     }
 
+    /** 탈퇴 본인인증: WITHDRAWAL purpose, SUCCESS, ciHash 저장됨 (memberUuid 연결 여부는 Application에서 처리) */
+    public boolean isAvailableForWithdrawal() {
+        return purpose == VerificationPurpose.WITHDRAWAL
+                && isSuccessful()
+                && ciHash != null
+                && !ciHash.isBlank();
+    }
+
+    public boolean isLinkedToMember(String memberUuid) {
+        if (memberUuid == null || memberUuid.isBlank()) {
+            return false;
+        }
+        return this.memberUuid != null && memberUuid.trim().equals(this.memberUuid);
+    }
+
+    public boolean hasLinkedMember() {
+        return memberUuid != null && !memberUuid.isBlank();
+    }
+
     @Builder(access = AccessLevel.PRIVATE)
     private IdentityVerificationDomain(
             Long identityVerificationId,

@@ -344,6 +344,56 @@ Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{a
 
 ---
 
+## 회원 탈퇴
+
+### Summary
+PASS 본인인증(`purpose=WITHDRAWAL`) confirm SUCCESS 후, 가입 시 연결된 CI와 탈퇴 인증 CI가 일치하면 `member_status`를 `WITHDRAWN`으로 변경하고 세션을 무효화합니다.  
+진행 중 거래·미처리 환불 확인은 Auth 범위 밖(후속)입니다.
+
+### Method · Path
+`POST /api/v1/auth/withdraw`
+
+### Auth
+필요 — Gateway JWT + `X-Member-Uuid`. **Origin 허용 목록 검증** (refresh·logout과 동일).
+
+### 사전 조건 (FE)
+1. `POST /api/v1/identity-verifications/confirm` — `purpose=WITHDRAWAL`
+2. confirm SUCCESS의 `requestToken`으로 본 API 호출
+
+### Request (Body)
+
+| 필드 | 타입 | 필수 | 제약 |
+|------|------|------|------|
+| requestToken | string | O | WITHDRAWAL confirm SUCCESS |
+
+```json
+{
+  "requestToken": "identity-verification-withdraw-001"
+}
+```
+
+### Response
+`204 No Content` + 만료 Cookie (`Max-Age=0`) 2개
+
+- `member_status` → `WITHDRAWN` (이미 탈퇴면 상태 변경 생략, 세션 revoke는 수행 — 멱등)
+- 탈퇴 본인인증 이력에 `memberUuid` 연결(재사용 방지)
+- 활성 access jti blacklist + access/refresh Redis 삭제
+
+### Errors
+
+| status | code | 의미 |
+|--------|------|------|
+| 401 | AUTH_UNAUTHORIZED | `X-Member-Uuid` 없음·공백 |
+| 403 | AUTH_FORBIDDEN_ORIGIN | Origin 누락/허용 목록 외 |
+| 403 | AUTH_IDENTITY_MISMATCH | 가입 CI ≠ 탈퇴 인증 CI |
+| 403 | AUTH_MEMBER_NOT_ACTIVE | ACTIVE·WITHDRAWN이 아닌 상태 |
+| 400 | IDENTITY_VERIFICATION_NOT_READY | 탈퇴용 본인인증 미완료·purpose 불일치 |
+| 400 | IDENTITY_VERIFICATION_ALREADY_USED | requestToken이 다른 회원에 연결됨 |
+| 404 | AUTH_NOT_FOUND | 계정 없음 |
+| 404 | IDENTITY_VERIFICATION_NOT_FOUND | 탈퇴·가입 본인인증 이력 없음 |
+
+---
+
 ## 중복 확인
 
 ### 아이디

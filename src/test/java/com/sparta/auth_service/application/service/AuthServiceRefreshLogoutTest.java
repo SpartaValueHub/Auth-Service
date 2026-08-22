@@ -39,6 +39,8 @@ import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 
 import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 
+import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
+
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
@@ -173,6 +175,12 @@ class AuthServiceRefreshLogoutTest {
     @Mock
 
     private IdentityKeyHashPort identityKeyHashPort;
+
+
+
+    @Mock
+
+    private SessionInvalidationPort sessionInvalidationPort;
 
 
 
@@ -561,10 +569,6 @@ class AuthServiceRefreshLogoutTest {
 
         when(authRepositoryPort.findByAuthUuid("uuid-001")).thenReturn(Optional.of(inactive));
 
-        when(jwtProperties.getAccessTokenMinutes()).thenReturn(15L);
-
-        when(activeAccessTokenPort.find("uuid-001")).thenReturn(Optional.of("access-jti"));
-
 
 
         assertThatThrownBy(() -> authService.refresh(
@@ -575,27 +579,13 @@ class AuthServiceRefreshLogoutTest {
 
 
 
-        verify(refreshTokenPort).delete("uuid-001");
-
-        verify(activeAccessTokenPort).delete("uuid-001");
-
-        verify(accessTokenBlacklistPort).blacklist(eq("access-jti"), eq(900L));
+        verify(sessionInvalidationPort).revokeAllSessions("uuid-001");
 
         verify(tokenProviderPort, never()).createAccessToken(any());
 
         verify(tokenProviderPort, never()).createRefreshToken(any());
 
         verify(refreshTokenPort, never()).rotate(any(), any(), any(), any(Long.class));
-
-        var inOrder = inOrder(activeAccessTokenPort, accessTokenBlacklistPort, refreshTokenPort);
-
-        inOrder.verify(activeAccessTokenPort).find("uuid-001");
-
-        inOrder.verify(accessTokenBlacklistPort).blacklist(eq("access-jti"), eq(900L));
-
-        inOrder.verify(activeAccessTokenPort).delete("uuid-001");
-
-        inOrder.verify(refreshTokenPort).delete("uuid-001");
 
     }
 
@@ -641,7 +631,7 @@ class AuthServiceRefreshLogoutTest {
 
         verify(refreshTokenPort, never()).rotate(any(), any(), any(), any(Long.class));
 
-        verify(refreshTokenPort).delete("uuid-001");
+        verify(sessionInvalidationPort).revokeAllSessions("uuid-001");
 
     }
 
@@ -669,8 +659,6 @@ class AuthServiceRefreshLogoutTest {
 
         when(authRepositoryPort.findByAuthUuid("uuid-001")).thenReturn(Optional.of(inactive));
 
-        when(activeAccessTokenPort.find("uuid-001")).thenReturn(Optional.empty());
-
 
 
         assertThatThrownBy(() -> authService.refresh(
@@ -681,11 +669,7 @@ class AuthServiceRefreshLogoutTest {
 
 
 
-        verify(accessTokenBlacklistPort, never()).blacklist(any(), any(Long.class));
-
-        verify(activeAccessTokenPort).delete("uuid-001");
-
-        verify(refreshTokenPort).delete("uuid-001");
+        verify(sessionInvalidationPort).revokeAllSessions("uuid-001");
 
         verify(tokenProviderPort, never()).createAccessToken(any());
 
@@ -717,10 +701,6 @@ class AuthServiceRefreshLogoutTest {
 
         when(authRepositoryPort.findByAuthUuid("uuid-001")).thenReturn(Optional.of(inactive));
 
-        when(jwtProperties.getAccessTokenMinutes()).thenReturn(0L);
-
-        when(activeAccessTokenPort.find("uuid-001")).thenReturn(Optional.of("access-jti"));
-
 
 
         assertThatThrownBy(() -> authService.refresh(
@@ -731,11 +711,7 @@ class AuthServiceRefreshLogoutTest {
 
 
 
-        verify(accessTokenBlacklistPort).blacklist("access-jti", 0L);
-
-        verify(activeAccessTokenPort).delete("uuid-001");
-
-        verify(refreshTokenPort).delete("uuid-001");
+        verify(sessionInvalidationPort).revokeAllSessions("uuid-001");
 
     }
 
@@ -875,11 +851,9 @@ class AuthServiceRefreshLogoutTest {
 
         when(authRepositoryPort.findByAuthUuid("uuid-001")).thenReturn(Optional.of(inactive));
 
-        when(activeAccessTokenPort.find("uuid-001")).thenReturn(Optional.of("access-jti"));
-
         org.mockito.Mockito.doThrow(new SecurityStoreUnavailableException(new RuntimeException("redis down")))
 
-                .when(accessTokenBlacklistPort).blacklist(eq("access-jti"), any(Long.class));
+                .when(sessionInvalidationPort).revokeAllSessions("uuid-001");
 
 
 

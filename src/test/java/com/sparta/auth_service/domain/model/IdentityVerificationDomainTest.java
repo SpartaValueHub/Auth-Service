@@ -216,6 +216,32 @@ class IdentityVerificationDomainTest {
     }
 
     @Test
+    void isAvailableForWithdrawal_requiresWithdrawalPurposeSuccessAndCiHash() {
+        IdentityVerificationDomain withdrawalVerified = IdentityVerificationDomain.createRequested(
+                REQUEST_TOKEN,
+                VerificationPurpose.WITHDRAWAL
+        ).markVerified(VerificationMethod.PASS, CI_HASH, VERIFIED_AT);
+
+        assertThat(withdrawalVerified.isAvailableForWithdrawal()).isTrue();
+        assertThat(withdrawalVerified.withMemberUuid("member-uuid-001").isAvailableForWithdrawal()).isTrue();
+        assertThat(createRequested().isAvailableForWithdrawal()).isFalse();
+        assertThat(createRequested().markVerified(VerificationMethod.PASS, CI_HASH, VERIFIED_AT)
+                .isAvailableForWithdrawal()).isFalse();
+    }
+
+    @Test
+    void isLinkedToMember_comparesTrimmedUuid() {
+        IdentityVerificationDomain linked = createRequested()
+                .markVerified(VerificationMethod.PASS, CI_HASH, VERIFIED_AT)
+                .withMemberUuid("member-uuid-001");
+
+        assertThat(linked.isLinkedToMember("member-uuid-001")).isTrue();
+        assertThat(linked.isLinkedToMember("  member-uuid-001  ")).isTrue();
+        assertThat(linked.isLinkedToMember("other")).isFalse();
+        assertThat(linked.hasLinkedMember()).isTrue();
+    }
+
+    @Test
     void reconstitute_preservesStoredValuesWithoutTransformation() {
         Instant createdAt = Instant.parse("2024-06-01T00:00:00Z");
 

@@ -20,7 +20,7 @@ import java.time.Instant;
 import java.util.Set;
 
 /**
- * refresh·logout Cookie 기반 엔드포인트 Origin 검증.
+ * refresh·logout·withdraw Cookie/세션 변경 엔드포인트 Origin 검증.
  * CSRF double-submit 대신 Origin allowlist로 cross-site 요청을 차단한다.
  */
 @Component
@@ -29,7 +29,8 @@ public class AuthOriginVerificationFilter extends OncePerRequestFilter {
 
     private static final Set<String> PROTECTED_PATHS = Set.of(
             "/api/v1/auth/refresh",
-            "/api/v1/auth/logout"
+            "/api/v1/auth/logout",
+            "/api/v1/auth/withdraw"
     );
 
     private final AuthOriginProperties authOriginProperties;
