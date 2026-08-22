@@ -8,6 +8,7 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.WithdrawMemberRequestVo;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignInResultDto;
@@ -16,6 +17,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
+import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import org.springframework.stereotype.Component;
 
 /** VO ↔ Input DTO 변환 — sign-up은 requestToken·loginId·password·email만 전달 */
@@ -88,6 +90,13 @@ public class AuthWebMapper {
                 .email(dto.getEmail())
                 .phoneNumber(dto.getPhoneNumber())
                 .joinedAt(dto.getJoinedAt())
+                .build();
+    }
+
+    public WithdrawMemberRequestDto toDto(WithdrawMemberRequestVo vo, String authUuid) {
+        return WithdrawMemberRequestDto.builder()
+                .authUuid(authUuid)
+                .requestToken(vo.getRequestToken())
                 .build();
     }
 }

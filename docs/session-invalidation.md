@@ -19,40 +19,38 @@
 
 **통합 검증:** password change → session invalidation 플로우는 구현·E2E 검증 **불가**.
 
-## 2. 회원 상태 변경 — 현재 없음
+## 2. 회원 상태 변경 — 탈퇴(WITHDRAWN) 경로 추가
 
-`MemberStatus`(ACTIVE / SUSPENDED / WITHDRAWN / DORMANT)는 Domain·Entity·DB 컬럼(`member_status`)으로 **저장·조회만** 가능하다.
+`MemberStatus`(ACTIVE / SUSPENDED / WITHDRAWN / DORMANT)는 Domain·Entity·DB 컬럼(`member_status`)으로 저장·조회한다.
 
 | 검색 대상 | 결과 |
 |-----------|------|
-| `AuthUseCase` / Controller | `member_status`를 갱신하는 API·UseCase 없음 |
-| `AuthDomain` | `isActive()` 조회만. `suspend()` 등 상태 변경 메서드 없음 |
+| `WithdrawMemberUseCase` / `POST /auth/withdraw` | PASS(`WITHDRAWAL`) confirm 후 CI 매칭 → `WITHDRAWN` + 세션 revoke |
+| `AuthDomain` | `withdraw()` — ACTIVE → WITHDRAWN (멱등). `isWithdrawn()` |
 | 사용처 | `signIn`·`refresh`에서 `auth.isActive()` 검사 후 `MemberNotActiveException` |
 
-가입 시 기본값 `ACTIVE`(`AuthDomain.createSignUp`). 이후 상태를 바꾸는 **공식 Application 경로는 없음**.
+가입 시 기본값 `ACTIVE`(`AuthDomain.createSignUp`).
 
-**통합 검증:** member status change → session invalidation 플로우는 구현·E2E 검증 **불가**.
+**통합 검증:** 탈퇴 → session invalidation은 `SessionInvalidationPort.revokeAllSessions` 경유.  
+`AuthService.refresh` inactive 경로와 **동일 Port**를 사용한다 (`RedisSessionInvalidationAdapter`).
 
-## 3. inactive 계정 refresh 시 `revokeSessionForInactiveAccount()` (`AuthService`)
+## 3. inactive 계정 refresh 시 `SessionInvalidationPort.revokeAllSessions()` (`AuthService`)
 
-유일하게 **세션을 적극 revoke**하는 Application 코드는 refresh 실패 분기다.
+유일하게 **세션을 적극 revoke**하는 Application 경로:
 
 ```
-refresh()
-  → authRepositoryPort.findByAuthUuid()
-  → !auth.isActive()
-       → revokeSessionForInactiveAccount(authUuid)
-       → throw MemberNotActiveException (403 AUTH_MEMBER_NOT_ACTIVE)
+refresh() inactive / withdraw()
+  → sessionInvalidationPort.revokeAllSessions(authUuid)
 ```
 
-`revokeSessionForInactiveAccount(String authUuid)` 동작:
+`RedisSessionInvalidationAdapter.revokeAllSessions(String authUuid)` 동작:
 
 1. Redis `auth:access:{authUuid}`에서 활성 access **jti** 조회
 2. jti가 있으면 `auth:blacklist:access:{jti}` 등록 (TTL = `jwt.access-token-minutes` 전체 수명 — Redis에 `exp` 없음)
 3. `auth:access:{authUuid}` 삭제
 4. `auth:refresh:{authUuid}` 삭제
 
-> **sign-in**에서 inactive 계정은 `MemberNotActiveException`만 던지고 **revoke 호출 없음** (기존 세션이 Redis에 남을 수 있음). inactive 세션 정리는 **refresh 시도 시**에만 발생.
+> **sign-in**에서 inactive 계정은 `MemberNotActiveException`만 던지고 **revoke 호출 없음** (기존 세션이 Redis에 남을 수 있음). inactive 세션 정리는 **refresh 시도** 또는 **탈퇴** 시 발생.
 
 Gateway·auth-api 명세: refresh 403 `AUTH_MEMBER_NOT_ACTIVE` 시 위 Redis 정리·access blacklist 수행 ([auth-api.md](./auth-api.md) refresh Errors 참고).
 
@@ -77,13 +75,18 @@ Gateway·auth-api 명세: refresh 403 `AUTH_MEMBER_NOT_ACTIVE` 시 위 Redis 정
 
 세션 무효화의 Edge 집행은 **blacklist 등록에 의존**한다.
 
-## 6. `SessionInvalidationService` — 미구현
+## 6. `SessionInvalidationPort` — 구현됨
 
-공통 세션 무효화 전용 Application 서비스(`SessionInvalidationService` 등)는 **코드베이스에 없음**.
+계정 단위 전체 세션 revoke는 `SessionInvalidationPort` / `RedisSessionInvalidationAdapter`로 공통화했다.
 
-현재 revoke 로직은 `AuthService` private `revokeSessionForInactiveAccount()` 및 `logout()` / sign-in 시 `issueTokens(..., invalidatePreviousSession=true)`에 **분산**.
+| 호출처 | 용도 |
+|--------|------|
+| `AuthService.refresh` (inactive) | inactive 계정 refresh 거부 시 |
+| `WithdrawMemberService.withdraw` | 탈퇴 후 |
 
-비밀번호 변경·회원 상태 변경 UseCase가 추가될 때 **동일 Redis 작업을 한 곳에서 호출**하도록 공통화하는 것이 권장된다 (아래 §7).
+`logout()`·sign-in 시 이전 access blacklist는 토큰/jti 단위라 Port와 별도로 유지한다.
+
+비밀번호 변경 등 추가 UseCase도 **동일 Port**를 호출한다 (아래 §7).
 
 ## 7. 향후 구현 시 필수: 공통 session invalidation
 
@@ -92,15 +95,15 @@ Gateway·auth-api 명세: refresh 403 `AUTH_MEMBER_NOT_ACTIVE` 시 위 Redis 정
 | UseCase (예정) | 무효화 필요 이유 |
 |----------------|------------------|
 | Password change / reset complete | 이전 비밀번호로 발급된 refresh·access 차단 |
-| Member status change (SUSPENDED, WITHDRAWN, DORMANT 등) | inactive 계정의 기존 세션 즉시 종료 |
+| Member status change (SUSPENDED, DORMANT 등) | inactive 계정의 기존 세션 즉시 종료 |
 
 권장 순서 (개념):
 
 1. `@Transactional` 내 auth Domain/DB 갱신
-2. **공통 invalidation** — 활성 access jti → blacklist, `auth:access:*`·`auth:refresh:*` 삭제 (`revokeSessionForInactiveAccount`와 동일 Redis 계약)
+2. **`sessionInvalidationPort.revokeAllSessions(authUuid)`**
 3. (선택) Gateway blacklist TTL은 기존과 동일 정책 (`auth-cookie-flow.md` sign-in blacklist 참고)
 
-`logout()`·inactive refresh revoke와 **동일 Redis 키·TTL 규칙**을 재사용해 drift를 막는다.
+`logout()`의 토큰 단위 무효화와 키 규칙은 유지하되, **계정 단위 revoke는 Port만 사용**해 drift를 막는다.
 
 ## 8. 타 서비스 auth 테이블 직접 UPDATE 금지
 
@@ -110,7 +113,7 @@ Gateway·auth-api 명세: refresh 403 `AUTH_MEMBER_NOT_ACTIVE` 시 위 Redis 정
 
 ## 9. DB–Redis 비원자성 한계
 
-`AuthService.revokeSessionForInactiveAccount` 주석과 동일:
+`RedisSessionInvalidationAdapter` 주석과 동일:
 
 > Redis 세션 정리는 DB `@Transactional`과 **원자적이지 않음** — 부분 실패 시 재시도·모니터링으로 보완.
 
@@ -131,4 +134,4 @@ Gateway·auth-api 명세: refresh 403 `AUTH_MEMBER_NOT_ACTIVE` 시 위 Redis 정
 
 ---
 
-**요약:** password change / member status change invalidation은 **미구현**. 실제 revoke는 **logout**, **sign-in(이전 access blacklist)**, **inactive refresh**(`revokeSessionForInactiveAccount`)에 한정. 향후 변경 UseCase는 공통 session invalidation 호출이 **필수**이며, auth DB 직접 UPDATE는 세션 일관성을 깨므로 금지.
+**요약:** 계정 단위 revoke는 `SessionInvalidationPort`로 공통화됨 (inactive refresh·탈퇴). password change 등은 미구현이지만 동일 Port 호출이 **필수**. 실제 revoke는 **logout(토큰 단위)**, **sign-in(이전 access blacklist)**, **inactive refresh·탈퇴(Port)** 경로. auth DB 직접 UPDATE는 세션 일관성을 깨므로 금지.

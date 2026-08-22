@@ -151,4 +151,42 @@ class AuthDomainTest {
         assertThat(auth.getCreatedAt()).isEqualTo(createdAt);
         assertThat(auth.getUpdatedAt()).isEqualTo(updatedAt);
     }
+
+    @Test
+    void withdraw_transitionsActiveToWithdrawn() {
+        AuthDomain auth = AuthDomain.createSignUp(
+                "user01", PASSWORD_HASH, "user@example.com", "홍길동",
+                BIRTHDAY, "01012345678", Gender.MALE
+        );
+
+        AuthDomain withdrawn = auth.withdraw();
+
+        assertThat(withdrawn.isWithdrawn()).isTrue();
+        assertThat(withdrawn.isActive()).isFalse();
+        assertThat(withdrawn.getMemberStatus()).isEqualTo(MemberStatus.WITHDRAWN);
+        assertThat(withdrawn.getAuthUuid()).isEqualTo(auth.getAuthUuid());
+    }
+
+    @Test
+    void withdraw_isIdempotentWhenAlreadyWithdrawn() {
+        AuthDomain withdrawn = AuthDomain.createSignUp(
+                "user01", PASSWORD_HASH, "user@example.com", "홍길동",
+                BIRTHDAY, "01012345678", Gender.MALE
+        ).withdraw();
+
+        assertThat(withdrawn.withdraw()).isSameAs(withdrawn);
+    }
+
+    @Test
+    void withdraw_rejectsNonActiveStatus() {
+        AuthDomain suspended = AuthDomain.reconstitute(
+                "uuid-001", "user01", "홍길동", BIRTHDAY, "01012345678", Gender.MALE,
+                "user@example.com", PASSWORD_HASH, Instant.parse("2026-01-01T00:00:00Z"),
+                MemberStatus.SUSPENDED, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        assertThatThrownBy(suspended::withdraw)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("탈퇴할 수 없는");
+    }
 }

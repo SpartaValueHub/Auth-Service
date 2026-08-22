@@ -3,6 +3,7 @@ package com.sparta.auth_service.adaptor.in.web;
 import com.sparta.auth_service.adaptor.in.web.config.DependencyFailureProperties;
 import com.sparta.auth_service.adaptor.in.web.vo.ErrorResponseVo;
 import com.sparta.auth_service.application.exception.AccountLockedException;
+import com.sparta.auth_service.application.exception.AuthIdentityMismatchException;
 import com.sparta.auth_service.application.exception.AuthNotFoundException;
 import com.sparta.auth_service.application.exception.CaptchaInvalidException;
 import com.sparta.auth_service.application.exception.CaptchaProviderUnavailableException;
@@ -222,6 +223,15 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(error(HttpStatus.NOT_FOUND, ex.getCode(), ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(AuthIdentityMismatchException.class)
+    public ResponseEntity<ErrorResponseVo> handleAuthIdentityMismatch(
+            AuthIdentityMismatchException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(error(HttpStatus.FORBIDDEN, ex.getCode(), ex.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(InvalidTokenException.class)

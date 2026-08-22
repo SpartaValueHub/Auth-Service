@@ -37,6 +37,7 @@ import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
+import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
 import com.sparta.auth_service.application.port.out.dto.ExternalIdentityVerificationDto;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
 import com.sparta.auth_service.application.port.out.dto.RefreshTokenRotationResult;
@@ -79,6 +80,7 @@ public class AuthService implements AuthUseCase {
     private final IdentityKeyHashPort identityKeyHashPort;
     private final SignupCompletionTokenPort signupCompletionTokenPort;
     private final SignupPersistenceService signupPersistenceService;
+    private final SessionInvalidationPort sessionInvalidationPort;
     private final JwtProperties jwtProperties;
     private final LoginAttemptProperties loginAttemptProperties;
     private final Clock clock;
@@ -246,7 +248,7 @@ public class AuthService implements AuthUseCase {
                 .orElseThrow(() -> new InvalidTokenException("유효하지 않은 refresh token입니다."));
 
         if (!auth.isActive()) {
-            revokeSessionForInactiveAccount(parsed.getAuthUuid());
+            sessionInvalidationPort.revokeAllSessions(parsed.getAuthUuid());
             throw new MemberNotActiveException("현재 로그인할 수 없는 계정입니다.");
         }
 
@@ -367,16 +369,6 @@ public class AuthService implements AuthUseCase {
             throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
         }
         throw new InvalidTokenException("유효하지 않은 refresh token입니다.");
-    }
-
-    private void revokeSessionForInactiveAccount(String authUuid) {
-        // Redis 세션 정리는 DB @Transactional과 원자적이지 않음 — 부분 실패 시 재시도·모니터링으로 보완.
-        // 활성 access Redis 값에 expiresAt 없음 — parseable access token blacklist와 동일하게 설정 TTL 사용.
-        activeAccessTokenPort.find(authUuid).ifPresent(jti ->
-                accessTokenBlacklistPort.blacklist(jti, configuredAccessTokenTtlSeconds())
-        );
-        activeAccessTokenPort.delete(authUuid);
-        refreshTokenPort.delete(authUuid);
     }
 
     private void enforceLoginRateLimit(String clientIp) {

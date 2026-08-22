@@ -5,5 +5,6 @@ public enum VerificationPurpose {
     SIGN_UP,
     SOCIAL_LINK,
     FIND_ID,
-    RESET_PASSWORD
+    RESET_PASSWORD,
+    WITHDRAWAL
 }

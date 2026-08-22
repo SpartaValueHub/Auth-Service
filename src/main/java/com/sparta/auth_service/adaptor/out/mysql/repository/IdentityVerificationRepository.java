@@ -2,6 +2,7 @@ package com.sparta.auth_service.adaptor.out.mysql.repository;
 
 import com.sparta.auth_service.adaptor.out.mysql.entity.IdentityVerificationEntity;
 import com.sparta.auth_service.domain.enums.VerificationPurpose;
+import com.sparta.auth_service.domain.enums.VerificationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
@@ -12,4 +13,10 @@ public interface IdentityVerificationRepository extends JpaRepository<IdentityVe
     Optional<IdentityVerificationEntity> findByRequestToken(String requestToken);
 
     boolean existsByCiHashAndPurposeAndMemberUuidIsNotNull(String ciHash, VerificationPurpose purpose);
+
+    Optional<IdentityVerificationEntity> findFirstByMemberUuidAndPurposeAndVerificationStatus(
+            String memberUuid,
+            VerificationPurpose purpose,
+            VerificationStatus verificationStatus
+    );
 }

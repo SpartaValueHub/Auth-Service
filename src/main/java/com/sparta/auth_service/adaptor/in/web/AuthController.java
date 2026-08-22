@@ -11,9 +11,11 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.WithdrawMemberRequestVo;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
 import com.sparta.auth_service.application.port.in.GetMyAuthAccountUseCase;
+import com.sparta.auth_service.application.port.in.WithdrawMemberUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthLogoutRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthRefreshRequestDto;
@@ -24,6 +26,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
 import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
+import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -57,6 +60,7 @@ public class AuthController {
 
     private final AuthUseCase authUseCase;
     private final GetMyAuthAccountUseCase getMyAuthAccountUseCase;
+    private final WithdrawMemberUseCase withdrawMemberUseCase;
     private final AuthWebMapper authWebMapper;
     private final AuthCookieWriter authCookieWriter;
     private final ClientIpResolver clientIpResolver;
@@ -144,6 +148,25 @@ public class AuthController {
         String authUuid = requireMemberUuid(headerMemberUuid);
         GetMyAuthAccountResultDto resultDto = getMyAuthAccountUseCase.getMyAuthAccount(authUuid);
         return authWebMapper.toVo(resultDto);
+    }
+
+    @Operation(
+            summary = "회원 탈퇴",
+            description = "purpose=WITHDRAWAL 본인인증 confirm SUCCESS 후 requestToken으로 탈퇴합니다. 가입 CI와 일치해야 합니다."
+    )
+    @PostMapping("/auth/withdraw")
+    public ResponseEntity<Void> withdraw(
+            @RequestHeader(value = MEMBER_UUID_HEADER, required = false) String headerMemberUuid,
+            @RequestBody WithdrawMemberRequestVo requestVo
+    ) {
+        String authUuid = requireMemberUuid(headerMemberUuid);
+        WithdrawMemberRequestDto requestDto = authWebMapper.toDto(requestVo, authUuid);
+        withdrawMemberUseCase.withdraw(requestDto);
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.clearAccessTokenCookie().toString())
+                .header(HttpHeaders.SET_COOKIE, authCookieWriter.clearRefreshTokenCookie().toString())
+                .build();
     }
 
     private String requireMemberUuid(String headerMemberUuid) {

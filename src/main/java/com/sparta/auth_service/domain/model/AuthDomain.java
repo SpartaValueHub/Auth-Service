@@ -133,6 +133,34 @@ public class AuthDomain {
         return memberStatus == MemberStatus.ACTIVE;
     }
 
+    public boolean isWithdrawn() {
+        return memberStatus == MemberStatus.WITHDRAWN;
+    }
+
+    /** 회원 탈퇴 — ACTIVE만 WITHDRAWN으로 전이. 이미 탈퇴면 동일 인스턴스 반환(멱등) */
+    public AuthDomain withdraw() {
+        if (memberStatus == MemberStatus.WITHDRAWN) {
+            return this;
+        }
+        if (memberStatus != MemberStatus.ACTIVE) {
+            throw new IllegalStateException("탈퇴할 수 없는 계정 상태입니다.");
+        }
+        return AuthDomain.builder()
+                .authUuid(this.authUuid)
+                .loginId(this.loginId)
+                .memberName(this.memberName)
+                .birthdayDate(this.birthdayDate)
+                .phoneNumber(this.phoneNumber)
+                .gender(this.gender)
+                .email(this.email)
+                .passwordHash(this.passwordHash)
+                .passwordChangedAt(this.passwordChangedAt)
+                .memberStatus(MemberStatus.WITHDRAWN)
+                .createdAt(this.createdAt)
+                .updatedAt(this.updatedAt)
+                .build();
+    }
+
     /** 평문 비밀번호 검증 — Application에서 encode 전에 호출 */
     public static void validatePlainPassword(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {

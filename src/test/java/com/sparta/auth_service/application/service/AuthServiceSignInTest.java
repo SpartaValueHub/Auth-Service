@@ -23,6 +23,7 @@ import com.sparta.auth_service.application.port.out.dto.LoginRateLimitResultDto;
 import com.sparta.auth_service.application.port.out.PasswordEncoderPort;
 import com.sparta.auth_service.application.port.out.RefreshTokenPort;
 import com.sparta.auth_service.application.port.out.IdentityKeyHashPort;
+import com.sparta.auth_service.application.port.out.SessionInvalidationPort;
 import com.sparta.auth_service.application.port.out.TokenProviderPort;
 import com.sparta.auth_service.application.port.out.SignupCompletionTokenPort;
 import com.sparta.auth_service.application.port.out.dto.ParsedTokenDto;
@@ -94,6 +95,9 @@ class AuthServiceSignInTest {
 
     @Mock
     private SignupCompletionTokenPort signupCompletionTokenPort;
+
+    @Mock
+    private SessionInvalidationPort sessionInvalidationPort;
 
     @Mock
     private JwtProperties jwtProperties;
