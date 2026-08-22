@@ -153,7 +153,7 @@ class AuthDomainTest {
     }
 
     @Test
-    void withdraw_transitionsActiveToWithdrawn() {
+    void withdraw_transitionsActiveToWithdrawnAndAnonymizesIdentifiers() {
         AuthDomain auth = AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "user@example.com", "홍길동",
                 BIRTHDAY, "01012345678", Gender.MALE
@@ -165,16 +165,38 @@ class AuthDomainTest {
         assertThat(withdrawn.isActive()).isFalse();
         assertThat(withdrawn.getMemberStatus()).isEqualTo(MemberStatus.WITHDRAWN);
         assertThat(withdrawn.getAuthUuid()).isEqualTo(auth.getAuthUuid());
+        assertThat(withdrawn.getLoginId()).isNotEqualTo(auth.getLoginId());
+        assertThat(withdrawn.getEmail()).isNotEqualTo(auth.getEmail());
+        assertThat(withdrawn.getPhoneNumber()).isNotEqualTo(auth.getPhoneNumber());
+        assertAnonymizedFromAuthUuid(withdrawn, auth.getAuthUuid());
     }
 
     @Test
-    void withdraw_isIdempotentWhenAlreadyWithdrawn() {
+    void withdraw_isIdempotentWhenAlreadyAnonymized() {
         AuthDomain withdrawn = AuthDomain.createSignUp(
                 "user01", PASSWORD_HASH, "user@example.com", "홍길동",
                 BIRTHDAY, "01012345678", Gender.MALE
         ).withdraw();
 
         assertThat(withdrawn.withdraw()).isSameAs(withdrawn);
+    }
+
+    @Test
+    void withdraw_anonymizesLegacyWithdrawnRowStillHoldingIdentifiers() {
+        String authUuid = "550e8400-e29b-41d4-a716-446655440000";
+        AuthDomain legacyWithdrawn = AuthDomain.reconstitute(
+                authUuid, "user01", "홍길동", BIRTHDAY, "01012345678", Gender.MALE,
+                "user@example.com", PASSWORD_HASH, Instant.parse("2026-01-01T00:00:00Z"),
+                MemberStatus.WITHDRAWN, Instant.parse("2026-01-01T00:00:00Z"), Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        AuthDomain anonymized = legacyWithdrawn.withdraw();
+
+        assertThat(anonymized).isNotSameAs(legacyWithdrawn);
+        assertThat(anonymized.getLoginId()).isNotEqualTo("user01");
+        assertThat(anonymized.getEmail()).isNotEqualTo("user@example.com");
+        assertThat(anonymized.getPhoneNumber()).isNotEqualTo("01012345678");
+        assertAnonymizedFromAuthUuid(anonymized, authUuid);
     }
 
     @Test
@@ -188,5 +210,13 @@ class AuthDomainTest {
         assertThatThrownBy(suspended::withdraw)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("탈퇴할 수 없는");
+    }
+
+    // withdraw() 결과만 검증 — Domain 내부 anonymize 헬퍼는 public API가 아님
+    private static void assertAnonymizedFromAuthUuid(AuthDomain withdrawn, String authUuid) {
+        String compact = authUuid.replace("-", "").toLowerCase();
+        assertThat(withdrawn.getLoginId()).isEqualTo("w" + compact.substring(0, 19));
+        assertThat(withdrawn.getPhoneNumber()).isEqualTo("w" + compact.substring(0, 19));
+        assertThat(withdrawn.getEmail()).isEqualTo("w" + compact + "@w.invalid");
     }
 }
