@@ -43,4 +43,19 @@ class SignupIdentityClaimAdapterTest {
                 .extracting("code")
                 .isEqualTo("AUTH_DUPLICATE_IDENTITY");
     }
+
+    @Test
+    void existsByCiHash_delegatesToRepositoryWithTrimmedValue() {
+        when(repository.existsByCiHash("ci-hash")).thenReturn(true);
+
+        assertThat(adapter.existsByCiHash(" ci-hash ")).isTrue();
+        verify(repository).existsByCiHash("ci-hash");
+    }
+
+    @Test
+    void releaseByAuthUuid_deletesByTrimmedAuthUuid() {
+        adapter.releaseByAuthUuid(" auth-uuid ");
+
+        verify(repository).deleteByAuthUuid("auth-uuid");
+    }
 }

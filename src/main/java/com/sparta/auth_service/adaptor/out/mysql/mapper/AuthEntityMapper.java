@@ -4,7 +4,7 @@ import com.sparta.auth_service.adaptor.out.mysql.entity.AuthEntity;
 import com.sparta.auth_service.domain.model.AuthDomain;
 import org.springframework.stereotype.Component;
 
-/** authUuid·loginId 등 불변 필드는 updateEntity에서 제외 — 신규 가입 시 toEntity만 사용 */
+/** 신규 가입은 toEntity. 탈퇴(WITHDRAWN)만 loginId 포함 갱신, 그 외는 loginId 불변 */
 @Component
 public class AuthEntityMapper {
 
@@ -24,6 +24,15 @@ public class AuthEntityMapper {
     }
 
     public void updateEntity(AuthEntity entity, AuthDomain domain) {
+        if (domain.isWithdrawn()) {
+            entity.applyWithdrawal(
+                    domain.getLoginId(),
+                    domain.getPhoneNumber(),
+                    domain.getEmail(),
+                    domain.getMemberStatus()
+            );
+            return;
+        }
         entity.updateProfile(
                 domain.getMemberName(),
                 domain.getBirthdayDate(),

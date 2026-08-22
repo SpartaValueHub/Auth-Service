@@ -129,4 +129,17 @@ public class AuthEntity {
         this.passwordChangedAt = passwordChangedAt;
         this.memberStatus = memberStatus;
     }
+
+    /** 탈퇴 시 UNIQUE 식별자 해제 — loginId·phone·email·status만 갱신 */
+    public void applyWithdrawal(
+            String loginId,
+            String phoneNumber,
+            String email,
+            MemberStatus memberStatus
+    ) {
+        this.loginId = loginId;
+        this.phoneNumber = phoneNumber;
+        this.email = email;
+        this.memberStatus = memberStatus;
+    }
 }
