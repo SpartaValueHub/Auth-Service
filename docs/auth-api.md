@@ -389,6 +389,46 @@ Refresh Redis 삭제 + Access jti blacklist(TTL=잔여 만료) + `auth:access:{a
 
 ---
 
+
+## 회원 가입일 조회 (타인 프로필용)
+
+### Summary
+ACTIVE Auth 계정의 가입일(`auth.created_at`)을 조회합니다. FO 판매자 프로필 모달용. `/auth/me`의 `joinedAt`과 동일 정본입니다.
+
+### Method · Path
+`GET /api/v1/auth/members/{memberUuid}/joined-at`
+
+### Auth
+Gateway **public** (비로그인 허용). JWT 불필요. Gateway public path 등록은 별도 PR.
+
+### Request (Path)
+
+| 필드 | 타입 | 필수 | 제약 |
+|------|------|------|------|
+| memberUuid | string | O | Auth/Member와 동일한 UUID. blank 불가 |
+
+### Response (200)
+
+| 필드 | 타입 |
+|------|------|
+| memberUuid | string |
+| joinedAt | string (ISO-8601 Instant, `auth.created_at`) |
+
+```json
+{
+  "memberUuid": "550e8400-e29b-41d4-a716-446655440000",
+  "joinedAt": "2026-08-04T08:00:00Z"
+}
+```
+
+### Errors
+
+| status | code | 의미 |
+|--------|------|------|
+| 400 | INVALID_REQUEST | memberUuid blank |
+| 404 | AUTH_NOT_FOUND | 계정 없음 또는 ACTIVE 아님 (WITHDRAWN/SUSPENDED/DORMANT 포함). 상태 구분 없이 동일 응답 |
+
+---
 ## 회원 탈퇴
 
 ### Summary

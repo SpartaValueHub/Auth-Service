@@ -4,6 +4,7 @@ import com.sparta.auth_service.adaptor.in.web.mapper.AuthWebMapper;
 import com.sparta.auth_service.adaptor.in.web.support.AuthCookieWriter;
 import com.sparta.auth_service.adaptor.in.web.support.ClientIpResolver;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAccountResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.MemberJoinedAtResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
@@ -14,6 +15,7 @@ import com.sparta.auth_service.adaptor.in.web.vo.AuthSignUpResumeResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.WithdrawMemberRequestVo;
 import com.sparta.auth_service.application.exception.UnauthorizedException;
 import com.sparta.auth_service.application.port.in.AuthUseCase;
+import com.sparta.auth_service.application.port.in.GetMemberJoinedAtUseCase;
 import com.sparta.auth_service.application.port.in.GetMyAuthAccountUseCase;
 import com.sparta.auth_service.application.port.in.WithdrawMemberUseCase;
 import com.sparta.auth_service.application.port.in.dto.AuthAvailabilityResultDto;
@@ -25,6 +27,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
+import com.sparta.auth_service.application.port.in.dto.GetMemberJoinedAtResultDto;
 import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
 import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +38,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -60,6 +64,7 @@ public class AuthController {
 
     private final AuthUseCase authUseCase;
     private final GetMyAuthAccountUseCase getMyAuthAccountUseCase;
+    private final GetMemberJoinedAtUseCase getMemberJoinedAtUseCase;
     private final WithdrawMemberUseCase withdrawMemberUseCase;
     private final AuthWebMapper authWebMapper;
     private final AuthCookieWriter authCookieWriter;
@@ -147,6 +152,14 @@ public class AuthController {
     ) {
         String authUuid = requireMemberUuid(headerMemberUuid);
         GetMyAuthAccountResultDto resultDto = getMyAuthAccountUseCase.getMyAuthAccount(authUuid);
+        return authWebMapper.toVo(resultDto);
+    }
+
+
+    @Operation(summary = "회원 가입일 조회", description = "ACTIVE 계정의 가입일(auth.created_at)을 조회합니다. Gateway public. WITHDRAWN/SUSPENDED/없음은 404.")
+    @GetMapping("/auth/members/{memberUuid}/joined-at")
+    public MemberJoinedAtResponseVo getMemberJoinedAt(@PathVariable String memberUuid) {
+        GetMemberJoinedAtResultDto resultDto = getMemberJoinedAtUseCase.getMemberJoinedAt(memberUuid);
         return authWebMapper.toVo(resultDto);
     }
 

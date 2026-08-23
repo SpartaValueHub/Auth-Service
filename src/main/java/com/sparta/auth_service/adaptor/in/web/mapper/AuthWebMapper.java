@@ -1,6 +1,7 @@
 package com.sparta.auth_service.adaptor.in.web.mapper;
 
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAccountResponseVo;
+import com.sparta.auth_service.adaptor.in.web.vo.MemberJoinedAtResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthAvailabilityResponseVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInRequestVo;
 import com.sparta.auth_service.adaptor.in.web.vo.AuthSignInResponseVo;
@@ -16,6 +17,7 @@ import com.sparta.auth_service.application.port.in.dto.AuthSignUpRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResultDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeRequestDto;
 import com.sparta.auth_service.application.port.in.dto.AuthSignUpResumeResultDto;
+import com.sparta.auth_service.application.port.in.dto.GetMemberJoinedAtResultDto;
 import com.sparta.auth_service.application.port.in.dto.GetMyAuthAccountResultDto;
 import com.sparta.auth_service.application.port.in.dto.WithdrawMemberRequestDto;
 import org.springframework.stereotype.Component;
@@ -93,6 +95,13 @@ public class AuthWebMapper {
                 .build();
     }
 
+
+    public MemberJoinedAtResponseVo toVo(GetMemberJoinedAtResultDto dto) {
+        return MemberJoinedAtResponseVo.builder()
+                .memberUuid(dto.getMemberUuid())
+                .joinedAt(dto.getJoinedAt())
+                .build();
+    }
     public WithdrawMemberRequestDto toDto(WithdrawMemberRequestVo vo, String authUuid) {
         return WithdrawMemberRequestDto.builder()
                 .authUuid(authUuid)
