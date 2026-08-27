@@ -44,7 +44,7 @@ springdoc:
 
 jwt:
   access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
-  refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:14}
+  refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:30}
   signup-completion-token-seconds: ${AUTH_SIGNUP_COMPLETION_TOKEN_SECONDS:120}
   private-key: ${JWT_PRIVATE_KEY:}
   private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}

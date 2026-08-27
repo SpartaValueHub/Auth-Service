@@ -29,7 +29,7 @@ public class JwtProperties {
             String privateKey,
             String privateKeyLocation,
             @DefaultValue("15") @Min(1) long accessTokenMinutes,
-            @DefaultValue("14") @Min(1) long refreshTokenDays,
+            @DefaultValue("30") @Min(1) long refreshTokenDays,
             @DefaultValue("120") @Min(1) long signupCompletionTokenSeconds
     ) {
         this.privateKey = privateKey;
