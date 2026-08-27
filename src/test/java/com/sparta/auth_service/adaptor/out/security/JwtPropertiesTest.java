@@ -12,7 +12,7 @@ class JwtPropertiesTest {
 
     @Test
     void rejectsNonPositiveAccessTokenMinutes() {
-        JwtProperties properties = new JwtProperties(null, null, 0, 14, 120);
+        JwtProperties properties = new JwtProperties(null, null, 0, 30, 120);
 
         assertThat(validator.validate(properties)).isNotEmpty();
     }
@@ -26,7 +26,7 @@ class JwtPropertiesTest {
 
     @Test
     void rejectsNonPositiveSignupCompletionTokenSeconds() {
-        JwtProperties properties = new JwtProperties(null, null, 15, 14, 0);
+        JwtProperties properties = new JwtProperties(null, null, 15, 30, 0);
 
         assertThat(validator.validate(properties)).isNotEmpty();
     }
@@ -37,6 +37,6 @@ class JwtPropertiesTest {
     }
 
     private JwtProperties validProperties() {
-        return new JwtProperties(null, null, 15, 14, 120);
+        return new JwtProperties(null, null, 15, 30, 120);
     }
 }
